@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>双创智能教练 · 教师决策看板</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body class="teacher-page">
+
+  <!-- 顶部导航 -->
+  <header class="topbar teacher-topbar">
+    <div class="topbar-left">
+      <span class="topbar-logo">📊 教师决策看板</span>
+      <span class="topbar-sub">双创智能教练 · 班级数据聚合分析</span>
+    </div>
+    <div class="topbar-right">
+      <span class="last-update" id="lastUpdate">–</span>
+      <button class="btn-primary btn-sm" id="refreshBtn">🔄 刷新</button>
+      <a href="/" class="link-btn">学生端 →</a>
+    </div>
+  </header>
+
+  <div class="teacher-dashboard">
+
+    <!-- ── 摘要卡片 ── -->
+    <div class="summary-row">
+      <div class="summary-card">
+        <div class="sc-number" id="totalTeams">–</div>
+        <div class="sc-label">参与团队</div>
+      </div>
+      <div class="summary-card sc-danger">
+        <div class="sc-number" id="highRiskCount">–</div>
+        <div class="sc-label">高风险项目</div>
+      </div>
+      <div class="summary-card sc-success">
+        <div class="sc-number" id="improvingCount">–</div>
+        <div class="sc-label">持续进步团队</div>
+      </div>
+      <div class="summary-card sc-info">
+        <div class="sc-number" id="improvementRate">–</div>
+        <div class="sc-label">进步率</div>
+      </div>
+      <div class="summary-card sc-warn">
+        <div class="sc-number" id="stagnantCount">–</div>
+        <div class="sc-label">停滞团队</div>
+      </div>
+    </div>
+
+    <!-- ── 教学建议（全宽） ── -->
+    <div class="db-card full-width">
+      <div class="db-card-header">
+        <span>🎯 本周教学干预建议</span>
+      </div>
+      <div class="suggestions-list" id="suggestionsList">
+        <p class="loading-hint">加载中…</p>
+      </div>
+    </div>
+
+    <!-- ── 两列布局 ── -->
+    <div class="db-two-col">
+
+      <!-- 规则触发排行榜 -->
+      <div class="db-card">
+        <div class="db-card-header">
+          <span>🚨 班级共性错误排行榜（H1-H15）</span>
+        </div>
+        <div class="chart-wrap" style="height:300px">
+          <canvas id="ruleBarChart"></canvas>
+        </div>
+        <div class="rule-detail-list" id="ruleDetailList"></div>
+      </div>
+
+      <!-- 班级能力图谱 -->
+      <div class="db-card">
+        <div class="db-card-header">
+          <span>📈 班级平均能力图谱</span>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="classRadarChart"></canvas>
+        </div>
+        <!-- 阶段分布饼图 -->
+        <div class="db-card-header" style="margin-top:16px">
+          <span>📍 学习阶段分布</span>
+        </div>
+        <div class="chart-wrap" style="height:180px">
+          <canvas id="phaseChart"></canvas>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── 团队详情表 ── -->
+    <div class="db-card full-width">
+      <div class="db-card-header">
+        <span>👥 团队详情列表</span>
+        <input type="text" id="teamSearch" class="search-input" placeholder="搜索学生ID…" />
+      </div>
+      <div class="table-scroll">
+        <table class="team-table" id="teamTable">
+          <thead>
+            <tr>
+              <th>学生ID</th>
+              <th>阶段</th>
+              <th>轮次</th>
+              <th>触发规则</th>
+              <th>痛点发现</th>
+              <th>方案策划</th>
+              <th>商业建模</th>
+              <th>资源杠杆</th>
+              <th>路演表达</th>
+              <th>综合得分</th>
+            </tr>
+          </thead>
+          <tbody id="teamTableBody">
+            <tr><td colspan="10" class="loading-hint">暂无数据</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /teacher-dashboard -->
+
+  <script src="/static/js/teacher.js"></script>
+</body>
+</html>

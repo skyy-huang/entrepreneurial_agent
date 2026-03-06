@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>双创智能教练 · 学生端</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+  <!-- ══════════════════════════════════════════════════
+       登录/新建会话 遮罩
+  ══════════════════════════════════════════════════ -->
+  <div class="overlay" id="overlay">
+    <div class="setup-card">
+      <div class="setup-logo">⚡</div>
+      <h1 class="setup-title">双创智能教练</h1>
+      <p class="setup-desc">
+        这不是帮你写商业计划书的 AI。<br />
+        这是一个会对你的逻辑漏洞穷追猛打的导师。<br />
+        <strong>准备好了吗？</strong>
+      </p>
+      <div class="setup-form">
+        <input
+          type="text"
+          id="studentIdInput"
+          class="setup-input"
+          placeholder="请输入你的学号或姓名"
+          maxlength="50"
+          autocomplete="off"
+        />
+        <button class="btn-primary" id="startBtn">开始挑战 →</button>
+      </div>
+      <p class="setup-hint">已有会话？<a href="#" id="resumeLink">输入会话ID恢复</a></p>
+      <div class="resume-area hidden" id="resumeArea">
+        <input
+          type="text"
+          id="resumeInput"
+          class="setup-input"
+          placeholder="输入会话 ID（8位）"
+          maxlength="8"
+        />
+        <button class="btn-secondary" id="resumeBtn">恢复会话</button>
+      </div>
+      <a href="/teacher" class="teacher-entry">教师端入口 →</a>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════
+       主界面
+  ══════════════════════════════════════════════════ -->
+  <div class="app-layout hidden" id="appLayout">
+    <!-- 顶部导航 -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <span class="topbar-logo">⚡ 双创智能教练</span>
+        <div class="phase-badge" id="phaseBadge">价值探测</div>
+      </div>
+      <div class="topbar-right">
+        <span class="round-info">第 <strong id="roundCount">0</strong> 轮</span>
+        <span class="session-info" id="sessionInfo"></span>
+        <a href="/teacher" class="link-btn">教师端</a>
+        <button class="link-btn" id="newSessionBtn">重新开始</button>
+      </div>
+    </header>
+
+    <div class="main-content">
+      <!-- ── 左侧：对话区 ── -->
+      <section class="chat-section">
+        <div class="messages-wrap" id="messagesWrap">
+          <div class="message assistant" id="welcomeMsg">
+            <!-- 欢迎消息由 JS 注入 -->
+          </div>
+        </div>
+        <div class="input-wrap">
+          <textarea
+            id="userInput"
+            class="msg-input"
+            placeholder="描述你的创业想法，或回答教练的问题…（Ctrl+Enter 发送）"
+            rows="3"
+          ></textarea>
+          <button class="btn-send" id="sendBtn" disabled>
+            <span id="sendLabel">发 送</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- ── 右侧：分析面板 ── -->
+      <aside class="analytics-section">
+        <!-- 能力图谱雷达图 -->
+        <div class="panel-card">
+          <div class="panel-header">
+            <span class="panel-icon">🎯</span>
+            <span class="panel-title">能力图谱</span>
+          </div>
+          <div class="radar-wrap">
+            <canvas id="radarChart"></canvas>
+          </div>
+          <div class="scores-grid" id="scoresGrid"></div>
+        </div>
+
+        <!-- 逻辑审计结果 -->
+        <div class="panel-card" id="fallaciesCard">
+          <div class="panel-header">
+            <span class="panel-icon">⚠️</span>
+            <span class="panel-title">逻辑审计结果</span>
+            <span class="badge" id="fallacyCount">0</span>
+          </div>
+          <div class="fallacies-list" id="fallaciesList">
+            <p class="empty-hint">等待教练分析中…</p>
+          </div>
+        </div>
+
+        <!-- 当前任务 -->
+        <div class="panel-card task-highlight hidden" id="taskCard">
+          <div class="panel-header">
+            <span class="panel-icon">📋</span>
+            <span class="panel-title">当前行动任务</span>
+          </div>
+          <p class="task-text" id="taskText"></p>
+        </div>
+
+        <!-- 超图摘要 -->
+        <div class="panel-card hidden" id="hypergraphCard">
+          <div class="panel-header">
+            <span class="panel-icon">🗂️</span>
+            <span class="panel-title">项目结构图谱</span>
+          </div>
+          <pre class="hypergraph-pre" id="hypergraphPre"></pre>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <script src="/static/js/student.js"></script>
+</body>
+</html>
