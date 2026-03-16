@@ -1,0 +1,28 @@
+# --- Python 自动生成文件 ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# --- 虚拟环境 ---
+.venv/
+env/
+venv/
+ENV/
+
+# --- 敏感信息 (非常重要！) ---
+.env
+# 注意：.env.example 应该保留在仓库中作为模板，不需要忽略
+
+# --- 编辑器配置 ---
+.vscode/
+.idea/
+*.swp
+
+# --- 本地运行数据 ---
+storage/sessions.json
+# 如果 storage 目录下全是运行时产生的临时数据，也可以直接忽略整个文件夹：
+# storage/
+
+# --- 其他 ---
+.DS_Store
