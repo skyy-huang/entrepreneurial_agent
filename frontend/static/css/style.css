@@ -231,124 +231,15 @@ strong { font-weight: 600; }
   font-style: italic;
 }
 
-/* 文件上传消息卡片 */
-.message.file-upload {
-  align-self: flex-end;
-  background: rgba(37,99,235,.15);
-  border: 1px solid rgba(37,99,235,.4);
-  border-bottom-right-radius: 4px;
-  max-width: 60%;
-}
-.file-msg-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #93c5fd;
-}
-.file-msg-name {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.file-msg-body {
-  margin-top: 6px;
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
 /* 输入区 */
 .input-wrap {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  gap: 10px;
   padding: 14px 20px;
   border-top: 1px solid var(--border);
   background: var(--bg-card);
   flex-shrink: 0;
 }
-
-/* 拖拽上传区域 */
-.upload-drop-zone {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  border: 2px dashed var(--border);
-  border-radius: var(--radius);
-  padding: 18px;
-  text-align: center;
-  color: var(--text-muted);
-  font-size: 13px;
-  transition: border-color var(--transition), background var(--transition);
-  cursor: pointer;
-}
-.upload-drop-zone.drag-over {
-  border-color: var(--primary);
-  background: rgba(37,99,235,.06);
-  color: var(--text);
-}
-.upload-drop-icon { font-size: 20px; }
-
-/* 已选文件徽章 */
-.file-badge {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  background: rgba(37,99,235,.12);
-  border: 1px solid rgba(37,99,235,.35);
-  border-radius: 8px;
-  font-size: 13px;
-  color: #93c5fd;
-}
-.file-badge-icon { flex-shrink: 0; }
-.file-badge-name {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-weight: 500;
-}
-.file-badge-remove {
-  background: none;
-  border: none;
-  color: var(--text-dim);
-  cursor: pointer;
-  font-size: 13px;
-  padding: 0 2px;
-  line-height: 1;
-  flex-shrink: 0;
-  transition: color var(--transition);
-}
-.file-badge-remove:hover { color: var(--danger); }
-
-/* 行内输入行（上传按钮 + textarea + 发送按钮） */
-.input-row {
-  display: flex;
-  gap: 10px;
-  align-items: flex-end;
-}
-.btn-upload {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  background: var(--bg-input);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  font-size: 18px;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: border-color var(--transition), background var(--transition);
-  margin-bottom: 2px;
-  line-height: 1;
-}
-.btn-upload:hover { border-color: var(--primary); background: rgba(37,99,235,.08); }
-.btn-upload.has-file { border-color: var(--primary); background: rgba(37,99,235,.12); }
 .msg-input {
   flex: 1;
   padding: 10px 14px;
