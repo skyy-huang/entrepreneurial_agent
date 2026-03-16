@@ -6,6 +6,7 @@
 // ── 状态 ──────────────────────────────────────────
 let sessionId = null;
 let radarChart = null;
+let pendingFile = null;   // 待上传的 File 对象
 
 const PHASE_MAP = {
   value_probe:    { label: '价值探测', cls: '' },
@@ -22,28 +23,35 @@ const SCORE_LABELS = {
 };
 
 // ── DOM 引用 ──────────────────────────────────────
-const overlay       = document.getElementById('overlay');
-const appLayout     = document.getElementById('appLayout');
-const studentInput  = document.getElementById('studentIdInput');
-const startBtn      = document.getElementById('startBtn');
-const resumeLink    = document.getElementById('resumeLink');
-const resumeArea    = document.getElementById('resumeArea');
-const resumeInput   = document.getElementById('resumeInput');
-const resumeBtn     = document.getElementById('resumeBtn');
-const messagesWrap  = document.getElementById('messagesWrap');
-const userInput     = document.getElementById('userInput');
-const sendBtn       = document.getElementById('sendBtn');
-const sendLabel     = document.getElementById('sendLabel');
-const phaseBadge    = document.getElementById('phaseBadge');
-const roundCount    = document.getElementById('roundCount');
-const sessionInfo   = document.getElementById('sessionInfo');
-const fallaciesList = document.getElementById('fallaciesList');
-const fallacyCount  = document.getElementById('fallacyCount');
-const taskCard      = document.getElementById('taskCard');
-const taskText      = document.getElementById('taskText');
+const overlay        = document.getElementById('overlay');
+const appLayout      = document.getElementById('appLayout');
+const studentInput   = document.getElementById('studentIdInput');
+const startBtn       = document.getElementById('startBtn');
+const resumeLink     = document.getElementById('resumeLink');
+const resumeArea     = document.getElementById('resumeArea');
+const resumeInput    = document.getElementById('resumeInput');
+const resumeBtn      = document.getElementById('resumeBtn');
+const messagesWrap   = document.getElementById('messagesWrap');
+const userInput      = document.getElementById('userInput');
+const sendBtn        = document.getElementById('sendBtn');
+const sendLabel      = document.getElementById('sendLabel');
+const phaseBadge     = document.getElementById('phaseBadge');
+const roundCount     = document.getElementById('roundCount');
+const sessionInfo    = document.getElementById('sessionInfo');
+const fallaciesList  = document.getElementById('fallaciesList');
+const fallacyCount   = document.getElementById('fallacyCount');
+const taskCard       = document.getElementById('taskCard');
+const taskText       = document.getElementById('taskText');
 const hypergraphCard = document.getElementById('hypergraphCard');
 const hypergraphPre  = document.getElementById('hypergraphPre');
 const newSessionBtn  = document.getElementById('newSessionBtn');
+// 文件上传相关
+const fileInput      = document.getElementById('fileInput');
+const uploadLabel    = document.getElementById('uploadLabel');
+const fileBadge      = document.getElementById('fileBadge');
+const fileBadgeName  = document.getElementById('fileBadgeName');
+const fileBadgeRemove = document.getElementById('fileBadgeRemove');
+const uploadDropZone = document.getElementById('uploadDropZone');
 
 // ── 入口 ──────────────────────────────────────────
 startBtn.addEventListener('click', handleStart);
@@ -55,7 +63,7 @@ userInput.addEventListener('keydown', e => {
   if (e.key === 'Enter' && e.ctrlKey) handleSend();
 });
 userInput.addEventListener('input', () => {
-  sendBtn.disabled = userInput.value.trim().length === 0;
+  updateSendBtn();
 });
 newSessionBtn.addEventListener('click', () => {
   if (confirm('确定要结束当前会话并重新开始吗？')) {
@@ -63,6 +71,75 @@ newSessionBtn.addEventListener('click', () => {
     location.reload();
   }
 });
+
+// ── 文件上传事件 ──────────────────────────────────
+fileInput.addEventListener('change', () => {
+  if (fileInput.files && fileInput.files[0]) {
+    setPendingFile(fileInput.files[0]);
+  }
+});
+
+fileBadgeRemove.addEventListener('click', () => {
+  clearPendingFile();
+});
+
+// 拖拽支持（整个 chat-section）
+const chatSection = document.querySelector('.chat-section');
+chatSection.addEventListener('dragover', e => {
+  e.preventDefault();
+  if (!sessionId) return;
+  uploadDropZone.classList.remove('hidden');
+  uploadDropZone.classList.add('drag-over');
+});
+chatSection.addEventListener('dragleave', e => {
+  if (!chatSection.contains(e.relatedTarget)) {
+    uploadDropZone.classList.add('hidden');
+    uploadDropZone.classList.remove('drag-over');
+  }
+});
+chatSection.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadDropZone.classList.add('hidden');
+  uploadDropZone.classList.remove('drag-over');
+  if (!sessionId) return;
+  const dt = e.dataTransfer;
+  if (dt && dt.files && dt.files[0]) {
+    setPendingFile(dt.files[0]);
+  }
+});
+uploadDropZone.addEventListener('click', () => {
+  fileInput.click();
+});
+
+// ── 文件管理 ──────────────────────────────────────
+function setPendingFile(file) {
+  const name = file.name.toLowerCase();
+  if (!name.endsWith('.pdf') && !name.endsWith('.docx')) {
+    showError('仅支持 PDF 或 Word（.docx）文件');
+    return;
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    showError('文件过大，请上传 10 MB 以内的文件');
+    return;
+  }
+  pendingFile = file;
+  fileBadgeName.textContent = file.name;
+  fileBadge.classList.remove('hidden');
+  uploadLabel.classList.add('has-file');
+  updateSendBtn();
+}
+
+function clearPendingFile() {
+  pendingFile = null;
+  fileInput.value = '';
+  fileBadge.classList.add('hidden');
+  uploadLabel.classList.remove('has-file');
+  updateSendBtn();
+}
+
+function updateSendBtn() {
+  sendBtn.disabled = !sessionId || (userInput.value.trim().length === 0 && !pendingFile);
+}
 
 // ── 开始新会话 ────────────────────────────────────
 async function handleStart() {
@@ -116,7 +193,7 @@ function showApp(data) {
   roundCount.textContent = data.round_count;
   initRadar(data.capability_scores);
   updateScoresGrid(data.capability_scores);
-  sendBtn.disabled = false;
+  updateSendBtn();
 
   if (data.welcome_message) {
     // 清除默认欢迎节点，添加真实欢迎消息
@@ -125,15 +202,25 @@ function showApp(data) {
   }
 }
 
-// ── 发送消息 ──────────────────────────────────────
+// ── 发送消息（文字 or 文件）────────────────────────
 async function handleSend() {
+  if (!sessionId) return;
+
+  if (pendingFile) {
+    await handleFileUpload();
+  } else {
+    await handleTextSend();
+  }
+}
+
+// ── 纯文字发送 ────────────────────────────────────
+async function handleTextSend() {
   const msg = userInput.value.trim();
-  if (!msg || !sessionId) return;
+  if (!msg) return;
 
   appendMessage(msg, 'user');
   userInput.value = '';
-  sendBtn.disabled = true;
-  sendLabel.textContent = '思考中…';
+  setSending(true, '思考中…');
 
   const thinking = appendMessage('教练正在思考中…', 'thinking');
 
@@ -141,19 +228,59 @@ async function handleSend() {
     const data = await apiPost('/api/chat', { session_id: sessionId, message: msg });
     thinking.remove();
     appendMessage(data.coach_response, 'assistant', data.next_task);
-    updatePhase(data.current_phase);
-    roundCount.textContent = data.round_count;
-    updateRadar(data.capability_scores);
-    updateScoresGrid(data.capability_scores);
-    updateFallacies(data.detected_fallacies || []);
-    updateTask(data.next_task);
-    updateHypergraph(data.hypergraph_summary || '');
+    updateAnalytics(data);
   } catch (err) {
     thinking.remove();
     appendMessage('⚠️ 请求失败：' + err.message, 'assistant');
   } finally {
+    setSending(false);
+  }
+}
+
+// ── 文件上传并获取教练回复 ────────────────────────
+async function handleFileUpload() {
+  const file = pendingFile;
+  clearPendingFile();
+
+  appendFileMessage(file.name);
+  setSending(true, '解析中…');
+
+  const thinking = appendMessage(`📄 正在解析《${file.name}》，教练准备中…`, 'thinking');
+
+  const formData = new FormData();
+  formData.append('session_id', sessionId);
+  formData.append('file', file);
+
+  try {
+    const res = await fetch('/api/upload', { method: 'POST', body: formData });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `文件上传失败 (HTTP ${res.status})`);
+    }
+    const data = await res.json();
+    thinking.remove();
+    // 展示文件摘要（折叠）
+    appendFileSummary(file.name, data.file_summary);
+    appendMessage(data.coach_response, 'assistant', data.next_task);
+    updateAnalytics(data);
+  } catch (err) {
+    thinking.remove();
+    appendMessage('⚠️ 文件处理失败：' + err.message, 'assistant');
+  } finally {
+    setSending(false);
+  }
+}
+
+// ── 发送状态管理 ──────────────────────────────────
+function setSending(isSending, label) {
+  sendBtn.disabled = isSending;
+  uploadLabel.style.pointerEvents = isSending ? 'none' : '';
+  uploadLabel.style.opacity = isSending ? '0.5' : '';
+  if (isSending) {
+    sendLabel.textContent = label || '思考中…';
+  } else {
     sendLabel.textContent = '发 送';
-    sendBtn.disabled = userInput.value.trim().length === 0;
+    updateSendBtn();
   }
 }
 
@@ -185,12 +312,58 @@ function appendMessage(content, role, task) {
   return div;
 }
 
+function appendFileMessage(filename) {
+  const div = document.createElement('div');
+  div.className = 'message file-upload';
+  div.innerHTML = `
+    <div class="file-msg-header">
+      <span>📎</span>
+      <span class="file-msg-name">${escapeHtml(filename)}</span>
+    </div>
+    <div class="file-msg-body">已上传项目计划书，等待解析…</div>
+  `;
+  messagesWrap.appendChild(div);
+  messagesWrap.scrollTop = messagesWrap.scrollHeight;
+  return div;
+}
+
+function appendFileSummary(filename, summary) {
+  const div = document.createElement('div');
+  div.className = 'message assistant';
+  const detailId = `summary-${Date.now()}`;
+  div.innerHTML = `
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">
+      📄 文件解析完成：<strong>${escapeHtml(filename)}</strong>
+    </div>
+    <details id="${detailId}">
+      <summary style="cursor:pointer;font-size:12px;color:var(--primary);user-select:none;">查看文件摘要 ▶</summary>
+      <pre style="margin-top:8px;font-size:11px;color:var(--text-muted);white-space:pre-wrap;word-break:break-word;line-height:1.6;">${escapeHtml(summary)}</pre>
+    </details>
+  `;
+  messagesWrap.appendChild(div);
+  messagesWrap.scrollTop = messagesWrap.scrollHeight;
+  return div;
+}
+
 function escapeHtml(str) {
   return str
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
     .replace(/\n/g, '<br>');
+}
+
+// ── 分析面板批量更新 ──────────────────────────────
+function updateAnalytics(data) {
+  updatePhase(data.current_phase);
+  roundCount.textContent = data.round_count;
+  updateRadar(data.capability_scores);
+  updateScoresGrid(data.capability_scores);
+  updateFallacies(data.detected_fallacies || []);
+  updateTask(data.next_task);
+  updateHypergraph(data.hypergraph_summary || '');
 }
 
 // ── 阶段更新 ──────────────────────────────────────

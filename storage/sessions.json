@@ -18,5 +18,26 @@
     "next_task": "",
     "coach_response": "",
     "round_count": 0
+  },
+  "65d02c1f": {
+    "session_id": "65d02c1f",
+    "student_id": "测试学生",
+    "messages": [],
+    "current_input": "",
+    "extracted_data": {},
+    "hypergraph_summary": "",
+    "detected_fallacies": [],
+    "capability_scores": {
+      "pain_point_discovery": 5.0,
+      "solution_planning": 5.0,
+      "business_modeling": 5.0,
+      "resource_leverage": 5.0,
+      "pitch_expression": 5.0
+    },
+    "current_phase": "value_probe",
+    "next_task": "",
+    "coach_response": "",
+    "round_count": 0,
+    "uploaded_file_summary": ""
   }
 }
