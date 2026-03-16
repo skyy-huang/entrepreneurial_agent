@@ -73,32 +73,15 @@
           </div>
         </div>
         <div class="input-wrap">
-          <!-- 文件上传区域 -->
-          <div class="upload-drop-zone hidden" id="uploadDropZone">
-            <span class="upload-drop-icon">📄</span>
-            <span class="upload-drop-text">将 PDF 或 Word 文件拖拽到此处上传</span>
-          </div>
-          <!-- 已选文件徽章 -->
-          <div class="file-badge hidden" id="fileBadge">
-            <span class="file-badge-icon">📎</span>
-            <span class="file-badge-name" id="fileBadgeName"></span>
-            <button class="file-badge-remove" id="fileBadgeRemove" title="移除文件">✕</button>
-          </div>
-          <div class="input-row">
-            <label class="btn-upload" id="uploadLabel" title="上传项目计划书（PDF/Word）">
-              📎
-              <input type="file" id="fileInput" accept=".pdf,.docx" hidden />
-            </label>
-            <textarea
-              id="userInput"
-              class="msg-input"
-              placeholder="描述你的创业想法，或回答教练的问题…（Ctrl+Enter 发送）"
-              rows="3"
-            ></textarea>
-            <button class="btn-send" id="sendBtn" disabled>
-              <span id="sendLabel">发 送</span>
-            </button>
-          </div>
+          <textarea
+            id="userInput"
+            class="msg-input"
+            placeholder="描述你的创业想法，或回答教练的问题…（Ctrl+Enter 发送）"
+            rows="3"
+          ></textarea>
+          <button class="btn-send" id="sendBtn" disabled>
+            <span id="sendLabel">发 送</span>
+          </button>
         </div>
       </section>
 

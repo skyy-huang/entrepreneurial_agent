@@ -3,11 +3,10 @@
 启动命令；uvicorn main:app --reload --port 8000
 """
 import os
-import re
 import uuid
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,7 +17,6 @@ load_dotenv()
 
 from graph.state import make_initial_state
 from graph.workflow import app_graph
-from graph.file_parser import parse_and_summarize
 from teacher.dashboard import aggregate_class_data
 from storage import load_sessions, save_sessions
 
@@ -114,71 +112,6 @@ async def chat(req: ChatRequest):
         "round_count": result["round_count"],
         "hypergraph_summary": result["hypergraph_summary"],
     }
-
-
-@app.post("/api/upload")
-async def upload_file(
-    session_id: str = Form(...),
-    file: UploadFile = File(...),
-):
-    """接收学生上传的项目计划书（PDF/DOCX），解析后经 extractor→critic→coach 流水线返回教练回复"""
-    if session_id not in sessions_store:
-        raise HTTPException(status_code=404, detail="会话不存在，请重新开始")
-
-    # 文件类型校验
-    filename = file.filename or ""
-    if not (filename.lower().endswith(".pdf") or filename.lower().endswith(".docx")):
-        raise HTTPException(status_code=400, detail="仅支持 PDF 或 Word（.docx）文件")
-
-    # 文件大小校验（最大 10 MB）
-    MAX_SIZE = 10 * 1024 * 1024
-    file_bytes = await file.read()
-    if len(file_bytes) > MAX_SIZE:
-        raise HTTPException(status_code=400, detail="文件过大，请上传 10 MB 以内的文件")
-    if len(file_bytes) == 0:
-        raise HTTPException(status_code=400, detail="文件为空，请重新选择")
-
-    # 解析文件，生成结构化摘要
-    try:
-        parsed = await parse_and_summarize(file_bytes, filename)
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc))
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"文件解析失败：{exc}")
-
-    summary = parsed["summary"]
-
-    # Sanitize filename before embedding in text content
-    safe_filename = re.sub(r"[^\w\s.\-（）()【】]", "", filename)[:100]
-
-    # 将文件摘要作为学生输入注入到对话流水线
-    state = dict(sessions_store[session_id])
-    state["uploaded_file_summary"] = summary
-    # 构造发送给流水线的输入：告知是文件上传，并附上摘要
-    state["current_input"] = (
-        f"【我上传了项目计划书《{safe_filename}》，以下是文件的结构化摘要，请基于此对我的项目进行分析和追问】\n\n{summary}"
-    )
-
-    # 运行 LangGraph 工作流
-    result = await app_graph.ainvoke(state)
-
-    # 持久化
-    sessions_store[session_id] = result
-    save_sessions(sessions_store)
-
-    return {
-        "session_id": session_id,
-        "filename": filename,
-        "file_summary": summary,
-        "coach_response": result["coach_response"],
-        "next_task": result["next_task"],
-        "detected_fallacies": result["detected_fallacies"],
-        "capability_scores": result["capability_scores"],
-        "current_phase": result["current_phase"],
-        "round_count": result["round_count"],
-        "hypergraph_summary": result["hypergraph_summary"],
-    }
-
 
 
 @app.get("/api/session/{session_id}")
