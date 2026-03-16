@@ -26,7 +26,10 @@ def aggregate_class_data(all_sessions: List[Dict[str, Any]]) -> Dict[str, Any]:
     聚合全班所有团队的会话数据，生成教师看板所需的全部字段。
     参数：all_sessions - 每个元素是一个 AgentState 字典
     """
-    total_teams = len(all_sessions)
+    # 过滤掉轮次为0或没有实质性内容的会话（即仅仅输入了学生ID的会话）
+    valid_sessions = [s for s in all_sessions if s.get("round_count", 0) > 0]
+    total_teams = len(valid_sessions)
+
     if total_teams == 0:
         return _empty_dashboard()
 
@@ -41,7 +44,7 @@ def aggregate_class_data(all_sessions: List[Dict[str, Any]]) -> Dict[str, Any]:
     }
     team_details: List[Dict] = []
 
-    for session in all_sessions:
+    for session in valid_sessions:
         # 去重：每队每条规则只计一次
         triggered = set()
         for f in session.get("detected_fallacies", []):
@@ -96,17 +99,17 @@ def aggregate_class_data(all_sessions: List[Dict[str, Any]]) -> Dict[str, Any]:
     teaching_suggestions = _generate_suggestions(rule_ranking, total_teams)
 
     # ── 学习增值指数
-    value_index = _calc_value_index(all_sessions)
+    value_index = _calc_value_index(valid_sessions)
 
     # ── 阶段分布
     phase_dist = dict(Counter(
         _PHASE_NAMES.get(s.get("current_phase", "value_probe"), "价值探测")
-        for s in all_sessions
+        for s in valid_sessions
     ))
 
     # ── 高风险项目数（存在 ≥2 条高严重度漏洞）
     high_risk_count = sum(
-        1 for s in all_sessions
+        1 for s in valid_sessions
         if sum(1 for f in s.get("detected_fallacies", []) if f.get("severity") == "high") >= 2
     )
 

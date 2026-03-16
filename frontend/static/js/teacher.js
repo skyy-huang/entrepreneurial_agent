@@ -20,18 +20,104 @@ const HIGH_SEVERITY_RULES = new Set(['H1','H2','H5','H6','H7','H8','H10','H13','
 
 // ── 初始化 ─────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  loadDashboard();
+  checkLoginStatus();
   document.getElementById('refreshBtn').addEventListener('click', loadDashboard);
   document.getElementById('teamSearch').addEventListener('input', filterTable);
+  
+  document.getElementById('loginSubmitBtn').addEventListener('click', handleLogin);
+  document.getElementById('logoutBtn').addEventListener('click', handleLogout);
 });
+
+// ── 登录逻辑 ───────────────────────────────────────
+function checkLoginStatus() {
+  const token = localStorage.getItem('teacherToken');
+  const username = localStorage.getItem('teacherUsername');
+  if (token) {
+    document.getElementById('loginOverlay').style.display = 'none';
+    document.getElementById('dashboardMain').style.display = 'block';
+    
+    document.getElementById('logoutBtn').style.display = 'inline-block';
+    document.getElementById('teacherNameDisplay').textContent = `你好, ${username}`;
+    
+    loadDashboard();
+  } else {
+    showLogin();
+  }
+}
+
+function showLogin() {
+  document.getElementById('loginOverlay').style.display = 'flex';
+  document.getElementById('dashboardMain').style.display = 'none';
+  document.getElementById('logoutBtn').style.display = 'none';
+  document.getElementById('teacherNameDisplay').textContent = '未登录';
+}
+
+function handleLogout() {
+  localStorage.removeItem('teacherToken');
+  localStorage.removeItem('teacherUsername');
+  showLogin();
+}
+
+async function handleLogin() {
+  const username = document.getElementById('teacherUsername').value.trim();
+  const password = document.getElementById('teacherPassword').value;
+  const errorMsg = document.getElementById('loginErrorMsg');
+  const btn = document.getElementById('loginSubmitBtn');
+
+  if (!username || !password) {
+    errorMsg.textContent = '请输入账号和密码';
+    return;
+  }
+
+  errorMsg.textContent = '';
+  btn.disabled = true;
+  btn.textContent = '登录中...';
+
+  try {
+    const res = await fetch('/api/teacher/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.detail || '登录失败');
+    }
+    
+    const data = await res.json();
+    localStorage.setItem('teacherToken', data.token);
+    localStorage.setItem('teacherUsername', data.username);
+    
+    checkLoginStatus();
+  } catch (err) {
+    errorMsg.textContent = err.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '登录';
+  }
+}
 
 // ── 加载看板数据 ────────────────────────────────────
 async function loadDashboard() {
+  const token = localStorage.getItem('teacherToken');
+  if (!token) return;
+
   const refreshBtn = document.getElementById('refreshBtn');
   refreshBtn.disabled = true;
   refreshBtn.textContent = '加载中…';
   try {
-    const data = await fetch('/api/teacher/dashboard').then(r => r.json());
+    const res = await fetch('/api/teacher/dashboard', {
+      headers: { 'Authorization': token }
+    });
+    if (!res.ok) {
+      if (res.status === 401) {
+        handleLogout();
+        throw new Error('登录已过期，请重新登录');
+      }
+      throw new Error('请求失败，状态码: ' + res.status);
+    }
+    const data = await res.json();
     renderDashboard(data);
     document.getElementById('lastUpdate').textContent =
       '最后更新：' + new Date().toLocaleTimeString('zh-CN');
@@ -224,7 +310,7 @@ function renderPhaseChart(dist) {
 function renderTeamTable(teams) {
   const tbody = document.getElementById('teamTableBody');
   if (!teams.length) {
-    tbody.innerHTML = '<tr><td colspan="10" class="loading-hint">暂无团队数据</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="12" class="loading-hint">暂无团队数据</td></tr>';
     return;
   }
   tbody.innerHTML = teams.map(t => {
@@ -239,6 +325,7 @@ function renderTeamTable(teams) {
 
     return `<tr>
       <td><strong>${escHtml(t.student_id)}</strong></td>
+      <td style="font-family: monospace; color: #94a3b8;">${escHtml(t.session_id)}</td>
       <td>${escHtml(t.current_phase)}</td>
       <td>${t.round_count}</td>
       <td><div class="rule-tags">${ruleTags || '–'}</div></td>
@@ -248,8 +335,32 @@ function renderTeamTable(teams) {
       ${scoreCell(s.resource_leverage)}
       ${scoreCell(s.pitch_expression)}
       <td><span class="score-chip ${avgCls}">${avg}</span></td>
+      <td><button class="btn-danger btn-sm" onclick="deleteTeam('${t.session_id}', '${t.student_id}')">删除</button></td>
     </tr>`;
   }).join('');
+}
+
+async function deleteTeam(sessionId, studentId) {
+  if (!confirm(`确定要删除学生 ${studentId} 的项目吗？此操作不可恢复。`)) return;
+  const token = localStorage.getItem('teacherToken');
+  try {
+    const res = await fetch(`/api/session/${sessionId}`, { 
+      method: 'DELETE',
+      headers: { 'Authorization': token }
+    });
+    if (!res.ok) {
+        if (res.status === 401) {
+            handleLogout();
+            throw new Error('登录已过期，请重新登录');
+        }
+        throw new Error('删除失败');
+    }
+    alert('删除成功');
+    loadDashboard(); // 重新加载数据
+  } catch (err) {
+    console.error(err);
+    alert('删除失败：' + err.message);
+  }
 }
 
 function scoreCell(val) {

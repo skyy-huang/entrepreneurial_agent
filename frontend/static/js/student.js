@@ -157,28 +157,48 @@ async function handleSend() {
   }
 }
 
+// ── 错误提示 ──────────────────────────────────────
+function showError(msg) {
+  alert(msg);
+}
+
 // ── 消息渲染 ──────────────────────────────────────
 function appendMessage(content, role, task) {
   const div = document.createElement('div');
   div.className = `message ${role}`;
 
-  if (role === 'assistant' && task) {
-    // 分离教练回复和任务部分
+  let htmlContent = '';
+
+  if (role === 'assistant') {
+    let mainText = content;
+    let taskText = '';
     const taskMarker = '【任务】';
-    const idx = content.indexOf(taskMarker);
-    if (idx !== -1) {
-      const mainText = content.slice(0, idx).trim();
-      const taskContent = content.slice(idx + taskMarker.length).trim();
-      div.innerHTML = `
-        <div>${escapeHtml(mainText)}</div>
-        <div class="task-inline">📋 任务：${escapeHtml(taskContent)}</div>
-      `;
-    } else {
-      div.textContent = content;
+    const taskIdx = content.indexOf(taskMarker);
+
+    if (taskIdx !== -1) {
+       mainText = content.substring(0, taskIdx).trim();
+       taskText = content.substring(taskIdx + taskMarker.length).trim();
     }
+
+    // Replace Markdown rendering
+    if (typeof marked !== 'undefined') {
+       htmlContent += `<div class="markdown-body">${marked.parse(mainText)}</div>`;
+    } else {
+       htmlContent += `<div>${escapeHtml(mainText)}</div>`;
+    }
+
+    if (taskText) {
+        htmlContent += `<div class="task-inline">📋 任务：${escapeHtml(taskText)}</div>`;
+    }
+
+  } else if (role === 'thinking') {
+    htmlContent = escapeHtml(content);
   } else {
-    div.textContent = content;
+    // User message
+    htmlContent = `<div>${escapeHtml(content)}</div>`;
   }
+
+  div.innerHTML = htmlContent;
 
   messagesWrap.appendChild(div);
   messagesWrap.scrollTop = messagesWrap.scrollHeight;
@@ -186,6 +206,7 @@ function appendMessage(content, role, task) {
 }
 
 function escapeHtml(str) {
+  if (typeof str !== 'string') return '';
   return str
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')

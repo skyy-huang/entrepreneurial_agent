@@ -6,7 +6,7 @@ import os
 import uuid
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -32,6 +32,23 @@ app.add_middleware(
 # 启动时加载已有会话
 sessions_store: dict = load_sessions()
 
+# ─────────────────────────────────────────────────────────────
+# 教师账号配置 (可扩展为从数据库或文件读取)
+# ─────────────────────────────────────────────────────────────
+TEACHERS = {
+    "teacher1": "123456",
+    "teacher2": "888888",
+    "wang": "password",
+}
+
+def verify_teacher_token(authorization: Optional[str]) -> str:
+    if not authorization or not authorization.startswith("token-"):
+        raise HTTPException(status_code=401, detail="未授权，请先登录")
+    username = authorization.replace("token-", "")
+    if username not in TEACHERS:
+        raise HTTPException(status_code=401, detail="无效凭证")
+    return username
+
 
 # ─────────────────────────────────────────────────────────────
 # 数据模型
@@ -40,15 +57,23 @@ class StartSessionRequest(BaseModel):
     student_id: str
     project_name: Optional[str] = ""
 
-
 class ChatRequest(BaseModel):
     session_id: str
     message: str
 
+class TeacherLoginRequest(BaseModel):
+    username: str
+    password: str
 
 # ─────────────────────────────────────────────────────────────
 # API 路由（必须在 StaticFiles mount 之前定义）
 # ─────────────────────────────────────────────────────────────
+@app.post("/api/teacher/login")
+async def teacher_login(req: TeacherLoginRequest):
+    """教师端登录接口"""
+    if TEACHERS.get(req.username) == req.password:
+        return {"token": f"token-{req.username}", "username": req.username}
+    raise HTTPException(status_code=401, detail="用户名或密码错误")
 
 @app.post("/api/session/start")
 async def start_session(req: StartSessionRequest):
@@ -133,15 +158,17 @@ async def get_session(session_id: str):
 
 
 @app.get("/api/teacher/dashboard")
-async def get_teacher_dashboard():
+async def get_teacher_dashboard(authorization: Optional[str] = Header(None)):
     """获取教师端看板聚合数据"""
+    verify_teacher_token(authorization)
     all_sessions = list(sessions_store.values())
     return aggregate_class_data(all_sessions)
 
 
 @app.delete("/api/session/{session_id}")
-async def delete_session(session_id: str):
+async def delete_session(session_id: str, authorization: Optional[str] = Header(None)):
     """删除指定会话（用于重置）"""
+    verify_teacher_token(authorization)
     if session_id not in sessions_store:
         raise HTTPException(status_code=404, detail="会话不存在")
     del sessions_store[session_id]
