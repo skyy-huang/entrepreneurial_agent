@@ -42,6 +42,9 @@ class AgentState(TypedDict):
     # 对话总轮数
     round_count: int
 
+    # 已解析的文件摘要（可为空字符串）
+    uploaded_file_summary: str
+
 
 def make_initial_state(session_id: str, student_id: str) -> AgentState:
     return AgentState(
@@ -63,4 +66,5 @@ def make_initial_state(session_id: str, student_id: str) -> AgentState:
         next_task="",
         coach_response="",
         round_count=0,
+        uploaded_file_summary="",
     )
