@@ -74,16 +74,36 @@
             <!-- 欢迎消息由 JS 注入 -->
           </div>
         </div>
-        <div class="input-wrap">
+        <div class="input-wrap" style="position: relative;">
+          <!-- 附件预览区域 -->
+          <div id="filePreview" style="display:none; padding: 10px 14px; background: rgba(30, 41, 59, 0.7); border-radius: 10px; border: 1px solid #334155; margin-bottom: 8px; align-items: center; justify-content: space-between; gap: 12px; width: fit-content; max-width: 100%;">
+            <div style="display:flex; align-items:center; gap: 12px; overflow: hidden;">
+               <div id="fileIconBox" style="background: #ef4444; color: white; width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; flex-shrink: 0;">PDF</div>
+               <div style="display:flex; flex-direction: column; overflow: hidden;">
+                 <span id="fileName" style="font-weight: 500; color: #e2e8f0; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;"></span>
+                 <span id="fileSizeHint" style="font-size: 11px; color: #94a3b8;"></span>
+               </div>
+            </div>
+            <button id="removeFileBtn" style="background: rgba(255,255,255,0.1); border: none; cursor: pointer; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 12px; transition: background 0.2s;" title="移除附件" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">✕</button>
+          </div>
           <textarea
             id="userInput"
             class="msg-input"
-            placeholder="描述你的创业想法，或回答教练的问题…（Ctrl+Enter 发送）"
+            placeholder="描述你的创业想法，或上传计划书…（Ctrl+Enter 发送）"
             rows="3"
+            style="background: transparent;"
           ></textarea>
-          <button class="btn-send" id="sendBtn" disabled>
-            <span id="sendLabel">发 送</span>
-          </button>
+          <div class="input-actions" style="display:flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+            <div style="display:flex; align-items: center; gap: 10px;">
+              <input type="file" id="fileUpload" style="display:none;" accept=".pdf,.doc,.docx,.txt" />
+              <button id="uploadBtn" style="background: none; border: none; font-size: 20px; color: #94a3b8; cursor: pointer; padding: 4px; transition: color 0.2s; display: flex; align-items: center; justify-content: center;" title="上传附件" onmouseover="this.style.color='#f8fafc'" onmouseout="this.style.color='#94a3b8'">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+              </button>
+            </div>
+            <button class="btn-send" id="sendBtn" disabled>
+              <span id="sendLabel">发 送</span>
+            </button>
+          </div>
         </div>
       </section>
 

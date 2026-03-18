@@ -44,6 +44,13 @@ const taskText      = document.getElementById('taskText');
 const hypergraphCard = document.getElementById('hypergraphCard');
 const hypergraphPre  = document.getElementById('hypergraphPre');
 const newSessionBtn  = document.getElementById('newSessionBtn');
+const uploadBtn      = document.getElementById('uploadBtn');
+const fileUpload     = document.getElementById('fileUpload');
+const filePreview    = document.getElementById('filePreview');
+const fileNameDisp   = document.getElementById('fileName');
+const removeFileBtn  = document.getElementById('removeFileBtn');
+
+let currentFile = null;
 
 // ── 入口 ──────────────────────────────────────────
 startBtn.addEventListener('click', handleStart);
@@ -55,13 +62,55 @@ userInput.addEventListener('keydown', e => {
   if (e.key === 'Enter' && e.ctrlKey) handleSend();
 });
 userInput.addEventListener('input', () => {
-  sendBtn.disabled = userInput.value.trim().length === 0;
+  sendBtn.disabled = userInput.value.trim().length === 0 && !currentFile;
 });
 newSessionBtn.addEventListener('click', () => {
   if (confirm('确定要结束当前会话并重新开始吗？')) {
     sessionId = null;
     location.reload();
   }
+});
+uploadBtn.addEventListener('click', () => {
+  fileUpload.click();
+});
+fileUpload.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  currentFile = file;
+  
+  // Format Size
+  let sizeText = '';
+  if (file.size > 1024 * 1024) {
+     sizeText = (file.size / 1024 / 1024).toFixed(2) + ' MB';
+  } else {
+     sizeText = (file.size / 1024).toFixed(2) + ' KB';
+  }
+
+  // Determine Ext & Icon color
+  const ext = file.name.split('.').pop().toLowerCase();
+  let iconColor = '#ef4444';
+  let extLabel = 'PDF';
+  if (ext === 'doc' || ext === 'docx') { iconColor = '#3b82f6'; extLabel = 'DOC'; }
+  if (ext === 'txt') { iconColor = '#10b981'; extLabel = 'TXT'; }
+
+  document.getElementById('fileName').textContent = file.name;
+  document.getElementById('fileSizeHint').textContent = `${extLabel} · ${sizeText}`;
+  
+  const fileIconBox = document.getElementById('fileIconBox');
+  if(fileIconBox) {
+    fileIconBox.style.background = iconColor;
+    fileIconBox.textContent = extLabel;
+  }
+
+  filePreview.style.display = 'flex';
+  sendBtn.disabled = false;
+});
+removeFileBtn.addEventListener('click', (e) => {
+  e.preventDefault();
+  currentFile = null;
+  fileUpload.value = '';
+  filePreview.style.display = 'none';
+  sendBtn.disabled = userInput.value.trim().length === 0;
 });
 
 // ── 开始新会话 ────────────────────────────────────
@@ -128,17 +177,51 @@ function showApp(data) {
 // ── 发送消息 ──────────────────────────────────────
 async function handleSend() {
   const msg = userInput.value.trim();
-  if (!msg || !sessionId) return;
+  if ((!msg && !currentFile) || !sessionId) return;
 
-  appendMessage(msg, 'user');
+  let displayMsg = msg;
+  if (currentFile) {
+    let sizeText = currentFile.size > 1024 * 1024 ? 
+                   (currentFile.size / 1024 / 1024).toFixed(2) + ' MB' : 
+                   (currentFile.size / 1024).toFixed(2) + ' KB';
+    displayMsg = `[FILE: ${currentFile.name}|${sizeText}]\n${msg}`;
+  }
+
+  appendMessage(displayMsg, 'user');
+  
   userInput.value = '';
   sendBtn.disabled = true;
-  sendLabel.textContent = '思考中…';
+  uploadBtn.disabled = true;
+  sendLabel.textContent = currentFile ? '阅读并思考中…' : '思考中…';
 
-  const thinking = appendMessage('教练正在思考中…', 'thinking');
+  const thinking = appendMessage(currentFile ? '教练正在阅读计划书并思考中…' : '教练正在思考中…', 'thinking');
 
   try {
-    const data = await apiPost('/api/chat', { session_id: sessionId, message: msg });
+    let data;
+    if (currentFile) {
+      const formData = new FormData();
+      formData.append('session_id', sessionId);
+      formData.append('file', currentFile);
+      if (msg) formData.append('message', msg);
+      
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || `HTTP ${res.status}`);
+      }
+      data = await res.json();
+      
+      // 清理文件状态
+      currentFile = null;
+      fileUpload.value = '';
+      filePreview.style.display = 'none';
+    } else {
+      data = await apiPost('/api/chat', { session_id: sessionId, message: msg });
+    }
+
     thinking.remove();
     appendMessage(data.coach_response, 'assistant', data.next_task);
     updatePhase(data.current_phase);
@@ -153,7 +236,8 @@ async function handleSend() {
     appendMessage('⚠️ 请求失败：' + err.message, 'assistant');
   } finally {
     sendLabel.textContent = '发 送';
-    sendBtn.disabled = userInput.value.trim().length === 0;
+    uploadBtn.disabled = false;
+    sendBtn.disabled = userInput.value.trim().length === 0 && !currentFile;
   }
 }
 
@@ -195,7 +279,46 @@ function appendMessage(content, role, task) {
     htmlContent = escapeHtml(content);
   } else {
     // User message
-    htmlContent = `<div>${escapeHtml(content)}</div>`;
+    let text = content;
+        
+    // 隐藏系统注入的摘要（避免刷新历史时显示一大坨）
+    const summaryIdx = text.indexOf('\n\n[系统摘要只读不回]');
+    if (summaryIdx !== -1) {
+        text = text.substring(0, summaryIdx);
+    }
+
+    const fileMatch = text.match(/^\[FILE:\s*(.+?)\|(.+?)\]\n([\s\S]*)$/);
+    if (fileMatch) {
+        const fileName = fileMatch[1];
+        const fileSize = fileMatch[2];
+        const userText = fileMatch[3].trim();
+        
+        const ext = fileName.split('.').pop().toLowerCase();
+        let iconColor = '#ef4444'; // default red for pdf
+        let extLabel = 'PDF';
+        if (ext === 'doc' || ext === 'docx') { iconColor = '#3b82f6'; extLabel = 'DOC'; }
+        if (ext === 'txt') { iconColor = '#10b981'; extLabel = 'TXT'; }
+
+        // 文件卡片独立在蓝色气泡外面，消息文本在蓝色气泡里
+        htmlContent = `
+          <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+            <div class="chat-file-card" style="display: flex; align-items: center; gap: 12px; background: rgba(30, 41, 59, 0.7); border: 1px solid #334155; border-radius: 12px; padding: 12px 16px; width: fit-content; max-width: 100%;">
+                <div style="background: ${iconColor}; color: white; width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 13px; flex-shrink: 0;">
+                    ${extLabel}
+                </div>
+                <div style="display: flex; flex-direction: column; overflow: hidden; text-align: left;">
+                    <span style="font-size: 14px; color: #f8fafc; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px;" title="${fileName}">${fileName}</span>
+                    <span style="font-size: 12px; color: #94a3b8; margin-top: 2px;">${extLabel} · ${fileSize}</span>
+                </div>
+            </div>
+            ${userText ? `<div style="background: #2563eb; color: #fff; padding: 12px 16px; border-radius: 12px 12px 0 12px; max-width: 100%; word-break: break-word;">${escapeHtml(userText)}</div>` : ''}
+          </div>
+        `;
+        // 因为我们重新定制了用户消息的结构让卡片悬浮在外，需要去掉默认包裹的容器样式干扰。这里我们直接替换掉div的class
+        div.className = `message ${role} custom-file-wrap`;
+    } else {
+        htmlContent = `<div>${escapeHtml(text)}</div>`;
+    }
   }
 
   div.innerHTML = htmlContent;

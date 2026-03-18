@@ -298,6 +298,14 @@ strong { font-weight: 600; }
   font-style: italic;
 }
 
+/* 用户消息带文件特殊处理（去掉外面蓝色的背景），让内部标签自己控制颜色 */
+.message.user.custom-file-wrap {
+  background: transparent !important;
+  color: inherit !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+}
+
 /* 输入区 */
 .input-wrap {
   display: flex;

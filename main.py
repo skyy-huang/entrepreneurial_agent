@@ -6,7 +6,7 @@ import os
 import uuid
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Header
+from fastapi import FastAPI, HTTPException, Header, UploadFile, File, Form
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,6 +17,7 @@ load_dotenv()
 
 from graph.state import make_initial_state
 from graph.workflow import app_graph
+from graph.document_agent import parse_and_summarize_document
 from teacher.dashboard import aggregate_class_data
 from storage import load_sessions, save_sessions
 
@@ -129,6 +130,53 @@ async def chat(req: ChatRequest):
 
     return {
         "session_id": req.session_id,
+        "coach_response": result["coach_response"],
+        "next_task": result["next_task"],
+        "detected_fallacies": result["detected_fallacies"],
+        "capability_scores": result["capability_scores"],
+        "current_phase": result["current_phase"],
+        "round_count": result["round_count"],
+        "hypergraph_summary": result["hypergraph_summary"],
+    }
+
+
+@app.post("/api/upload")
+async def upload_document(
+    session_id: str = Form(...),
+    file: UploadFile = File(...),
+    message: Optional[str] = Form(None)
+):
+    """处理上传的项目计划书文件，并允许附加想法"""
+    if session_id not in sessions_store:
+        raise HTTPException(status_code=404, detail="会话不存在，请重新开始")
+    
+    file_bytes = await file.read()
+    summary = await parse_and_summarize_document(file_bytes, file.filename)
+    
+    if not summary:
+        raise HTTPException(status_code=400, detail="无法解析该文档。请确保它是带有文本的PDF、Docx或Txt文件。")
+
+    state = dict(sessions_store[session_id])
+    user_thoughts = message if message else ""
+    
+    # 格式化前端可解析的文件标识：[FILE: filename|size]
+    file_size_bytes = len(file_bytes)
+    if file_size_bytes > 1024 * 1024:
+        size_text = f"{file_size_bytes / (1024 * 1024):.2f} MB"
+    else:
+        size_text = f"{file_size_bytes / 1024:.2f} KB"
+        
+    state["current_input"] = f"[FILE: {file.filename}|{size_text}]\n{user_thoughts}\n\n[系统摘要只读不回]\n（系统提示：学生刚上传了一份项目计划书《{file.filename}》，内容摘要如下。请结合学生的想法阅读作为背景信息，对项目进行审计或提问。）\n【文档提取摘要】\n{summary}"
+
+    # 运行 LangGraph 工作流处理新文档
+    result = await app_graph.ainvoke(state)
+
+    # 持久化
+    sessions_store[session_id] = result
+    save_sessions(sessions_store)
+
+    return {
+        "session_id": session_id,
         "coach_response": result["coach_response"],
         "next_task": result["next_task"],
         "detected_fallacies": result["detected_fallacies"],
