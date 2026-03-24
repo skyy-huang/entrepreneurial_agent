@@ -13,6 +13,10 @@ from .state import AgentState
 from hypergraph.extractor import extract_business_elements, build_hypergraph_from_extraction
 from hypergraph.rules import get_rules_for_prompt
 from prompts.coach_prompt import build_coach_prompt
+from .graph_coach import GraphCoach
+
+# 全局初始化导师引擎，加载案例库数据
+master_coach_engine = GraphCoach()
 
 
 def _get_llm(temperature: float = 0.3) -> ChatOpenAI:
@@ -149,10 +153,14 @@ async def coach_node(state: AgentState) -> dict:
     """基于审计结果，用苏格拉底提问法生成回复，每次只分配1个行动任务"""
     llm = _get_llm(temperature=0.7)
 
+    # 从主案例图谱中检索优秀案例对标逻辑
+    master_context = master_coach_engine.retrieve_context()
+
     system_prompt = build_coach_prompt(
         phase=state["current_phase"],
         detected_fallacies=state["detected_fallacies"],
         hypergraph_summary=state["hypergraph_summary"],
+        master_graph_context=master_context
     )
 
     # 构建对话历史（最近8条）
