@@ -8,7 +8,7 @@ import uuid
 import logging
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Header, UploadFile, File, Form, Request
+from fastapi import FastAPI, HTTPException, Header
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -25,8 +25,6 @@ logger = logging.getLogger("entrepreneurial_agent")
 
 from graph.state import make_initial_state
 from graph.workflow import app_graph
-from graph.nodes import rubric_scoring_node
-from graph.document_agent import parse_and_summarize_document
 from teacher.dashboard import aggregate_class_data, generate_student_capability_report, generate_grading_report
 from storage import load_sessions, save_sessions, load_users, save_users
 
@@ -97,16 +95,6 @@ class ChatRequest(BaseModel):
 class TeacherLoginRequest(BaseModel):
     username: str
     password: str
-
-
-class CompetitionRequest(BaseModel):
-    session_id: str
-    competition_name: str
-    project_text: str
-
-class FinancialAnalysisRequest(BaseModel):
-    session_id: str
-
 
 
 class InterventionRequest(BaseModel):
@@ -236,113 +224,6 @@ async def chat(req: ChatRequest):
         "kb_context": result.get("kb_context", {}),
     }
 
-
-@app.post("/api/upload")
-async def upload_document(
-    session_id: str = Form(...),
-    file: UploadFile = File(...),
-    message: Optional[str] = Form(None),
-    agent_mode: Optional[str] = Form("coach")
-):
-    """处理上传的项目计划书文件"""
-    if session_id not in sessions_store:
-        raise HTTPException(status_code=404, detail="会话不存在，请重新开始")
-
-    file_bytes = await file.read()
-    summary = await parse_and_summarize_document(file_bytes, file.filename)
-
-    if not summary:
-        raise HTTPException(status_code=400, detail="无法解析该文档，请确保是带文本的PDF/Docx/Txt文件")
-
-    state = dict(sessions_store[session_id])
-    user_thoughts = message if message else ""
-
-    file_size_bytes = len(file_bytes)
-    size_text = f"{file_size_bytes / 1024:.2f} KB"
-
-    state["current_input"] = (
-        f"[FILE: {file.filename}|{size_text}]\n{user_thoughts}\n\n"
-        f"[系统摘要只读不回]\n"
-        f"（系统提示：学生上传了计划书《{file.filename}》，摘要如下，请审计并提问。）\n"
-        f"【文档提取摘要】\n{summary}"
-    )
-    state["agent_mode"] = agent_mode
-
-    result = await app_graph.ainvoke(state)
-    sessions_store[session_id] = result
-    save_sessions(sessions_store)
-
-    return {
-        "session_id": session_id,
-        "coach_response": result["coach_response"],
-        "next_task": result["next_task"],
-        "thought_process": result.get("thought_process", ""),
-        "detected_fallacies": result["detected_fallacies"],
-        "capability_scores": result["capability_scores"],
-        "current_phase": result["current_phase"],
-        "round_count": result["round_count"],
-        "hypergraph_summary": result["hypergraph_summary"],
-        "kb_context": result.get("kb_context", {}),
-    }
-
-
-@app.post("/api/competition/score")
-async def competition_score(req: CompetitionRequest):
-    """竞赛顾问：逐项 Rubric 评分（支持动态赛事切换）"""
-    if req.session_id not in sessions_store:
-        raise HTTPException(status_code=404, detail="会话不存在")
-
-    state = dict(sessions_store[req.session_id])
-    state["current_input"] = req.project_text
-    state["competition_mode"] = req.competition_name
-
-    result = await rubric_scoring_node(state)
-
-    sessions_store[req.session_id].update({
-        "rubric_scores": result.get("rubric_scores", {}),
-        "score_breakdown": result.get("score_breakdown", {}),
-        "messages": result.get("messages", state["messages"]),
-        "round_count": result.get("round_count", state["round_count"]),
-    })
-    save_sessions(sessions_store)
-
-    return {
-        "session_id": req.session_id,
-        "competition_name": req.competition_name,
-        "coach_response": result.get("coach_response", ""),
-        "rubric_scores": result.get("rubric_scores", {}),
-        "score_breakdown": result.get("score_breakdown", {}),
-        "next_task": result.get("next_task", ""),
-    }
-
-
-@app.post("/api/financial-analysis")
-async def get_financial_analysis(req: FinancialAnalysisRequest):
-    """独立的财务与市场分析接口（A3/6）"""
-    if req.session_id not in sessions_store:
-        raise HTTPException(status_code=404, detail="会话不存在")
-    
-    state = sessions_store[req.session_id]
-    
-    # 抽取已经由 document_agent 保存的项目摘要或输入，供评委分析
-    project_draft = state.get("hypergraph_summary", "")
-    if not project_draft or len(project_draft) < 10:
-        # 如果还没生成超图摘要，就直接用 messages 里的用户输入
-        msgs = [m.get("content", "") for m in state.get("messages", []) if m.get("role") == "user"]
-        project_draft = "\n\n".join(msgs[-3:]) # 取最近几条
-
-    from prompts.coach_prompt import build_financial_analyst_prompt
-    from graph.document_agent import _get_llm
-    from langchain_core.messages import SystemMessage
-
-    prompt = build_financial_analyst_prompt(project_draft)
-    llm = _get_llm(temperature=0.3)
-    try:
-        resp = await llm.ainvoke([SystemMessage(content=prompt)])
-        return {"analysis": resp.content}
-    except Exception as e:
-        logger.error(f"Financial Analyst Error: {e}")
-        raise HTTPException(status_code=500, detail="生成财务报告失败")
 
 @app.get("/api/session/{session_id}")
 async def get_session(session_id: str):
@@ -543,8 +424,7 @@ async def serve_student():
 
 @app.get("/teacher")
 async def serve_teacher():
-    # Unified page — role switcher handles view toggling
-    return FileResponse("frontend/index.html")
+    return FileResponse("frontend/teacher.html")
 
 
 @app.get("/admin")
@@ -554,49 +434,6 @@ async def serve_admin():
     if os.path.exists(admin_path):
         return FileResponse(admin_path)
     return FileResponse("frontend/teacher.html")
-
-
-@app.get("/graph-stats")
-async def serve_graph_stats():
-    """知识图谱 & 超图统计可视化页面"""
-    stats_path = "frontend/graph_stats.html"
-    if not os.path.exists(stats_path):
-        # 动态生成
-        from generate_stats_page import generate_html
-        generate_html()
-    return FileResponse(stats_path)
-
-
-@app.get("/api/graph-stats")
-async def get_graph_stats():
-    """知识图谱 & 超图统计数据 API"""
-    from generate_stats_page import get_stats_json
-    return get_stats_json()
-
-
-@app.get("/api/graph-data")
-async def get_graph_data():
-    """返回完整知识图谱节点和边数据（供力导向图使用）"""
-    from generate_stats_page import load_graph_data
-    data = load_graph_data()
-    # 按ID去重节点（ECharts要求节点name唯一）
-    seen = {}
-    for n in data.get("nodes", []):
-        nid = n["id"]
-        if nid not in seen:
-            seen[nid] = n.get("type", "未知")
-    nodes = [{"id": nid, "type": t} for nid, t in seen.items()]
-    node_ids = set(seen.keys())
-    
-    edges = []
-    
-    for e in data.get("edges", []):
-        if e.get("source") in node_ids and e.get("target") in node_ids:
-            edges.append({"source": e["source"], "target": e["target"]})
-
-    hyperedges = data.get("hyperedges", [])
-    
-    return {"nodes": nodes, "edges": edges, "hyperedges": hyperedges}
 
 
 # 静态资源

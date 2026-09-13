@@ -44,6 +44,11 @@ def _get_llm(temperature: float = 0.3) -> ChatOpenAI:
     )
 
 
+def _llm_available() -> bool:
+    key = os.getenv("DEEPSEEK_API_KEY", "")
+    return bool(key and key != "your_deepseek_api_key_here")
+
+
 # ─────────────────────────────────────────────────────────────
 # Node 1: Extractor
 # ─────────────────────────────────────────────────────────────
@@ -185,6 +190,23 @@ async def critic_node(state: AgentState) -> dict:
 
     logger.info("[CRITIC] Phase1 done: %s", phase1_summary)
 
+    if not _llm_available():
+        return {
+            "detected_fallacies": phase1_fallacies,
+            "capability_scores": state["capability_scores"],
+            "current_phase": rule_result.get("phase_recommendation", state["current_phase"]),
+            "detected_keywords": [],
+            "probing_strategy": get_strategy_for_fallacy([]),
+            "rule_engine_result": {
+                "triggered_rules": [f["rule_id"] for f in phase1_fallacies],
+                "gap_fields": rule_result["gap_fields"],
+                "evidence_coverage": evidence_result["overall_coverage"],
+                "critical_missing_evidence": evidence_result["critical_missing"][:5],
+                "phase1_count": len(phase1_fallacies),
+                "phase2_count": 0,
+            },
+        }
+
     # == Phase 2 (LLM): supplement deep semantic flaws + score update ==
     llm = _get_llm(temperature=0.1)
     strategy_keys = list(INTERROGATION_STRATEGIES.keys())
@@ -202,7 +224,25 @@ async def critic_node(state: AgentState) -> dict:
         HumanMessage(content=f"Student latest input: {state['current_input']}"),
     ]
 
-    response = await llm.ainvoke(messages)
+    try:
+        response = await llm.ainvoke(messages)
+    except Exception as exc:
+        logger.warning("[CRITIC] LLM unavailable, using deterministic audit: %s", exc)
+        return {
+            "detected_fallacies": phase1_fallacies,
+            "capability_scores": state["capability_scores"],
+            "current_phase": rule_result.get("phase_recommendation", state["current_phase"]),
+            "detected_keywords": [],
+            "probing_strategy": get_strategy_for_fallacy([]),
+            "rule_engine_result": {
+                "triggered_rules": [f["rule_id"] for f in phase1_fallacies],
+                "gap_fields": rule_result["gap_fields"],
+                "evidence_coverage": evidence_result["overall_coverage"],
+                "critical_missing_evidence": evidence_result["critical_missing"][:5],
+                "phase1_count": len(phase1_fallacies),
+                "phase2_count": 0,
+            },
+        }
     phase2_result = _parse_json_response(response.content, {
         "additional_fallacies": [],
         "capability_score_updates": state["capability_scores"],
@@ -281,6 +321,33 @@ async def critic_node(state: AgentState) -> dict:
 # ─────────────────────────────────────────────────────────────
 async def coach_node(state: AgentState) -> dict:
     """基于审计结果，用苏格拉底提问法生成回复，每次只分配1个行动任务"""
+    if not _llm_available():
+        fallacies = state.get("detected_fallacies", [])
+        summary = state.get("extracted_data", {}).get("summary", {})
+        missing = state.get("rule_engine_result", {}).get("gap_fields", [])
+        focus = fallacies[0]["description"] if fallacies else "当前描述已经形成基础闭环"
+        next_task = "请补充一个具体客户、一个真实痛点证据，以及客户目前采用的替代方案。"
+        if missing:
+            next_task = f"请优先补充：{', '.join(dict.fromkeys(missing[:3]))}。每项都给出一个具体事实或数字。"
+        coach_reply = (
+            "这是本地诊断模式：当前未配置 DeepSeek API Key，因此先使用规则引擎给你反馈。\n\n"
+            f"**当前最需要验证的点**：{focus}\n\n"
+            f"你刚才的输入已记录。目标客户：{summary.get('target_customer', '未提及')}；"
+            f"核心痛点：{summary.get('core_pain_point', '未提及')}。\n\n"
+            "不要先扩展功能，请先把下面这一条证据补齐。"
+        )
+        new_messages = list(state["messages"]) + [
+            {"role": "user", "content": state["current_input"]},
+            {"role": "assistant", "content": coach_reply},
+        ]
+        return {
+            "coach_response": coach_reply,
+            "next_task": next_task,
+            "thought_process": "本地模式：先运行确定性规则，再围绕最高优先级缺口生成一条行动任务。",
+            "messages": new_messages,
+            "round_count": state["round_count"] + 1,
+        }
+
     llm = _get_llm(temperature=0.7)
 
     master_context = master_coach_engine.retrieve_context()
@@ -334,8 +401,21 @@ async def coach_node(state: AgentState) -> dict:
             lc_messages.append(AIMessage(content=msg["content"]))
     lc_messages.append(HumanMessage(content=state["current_input"]))
 
-    response = await llm.ainvoke(lc_messages)
-    coach_reply = response.content
+    try:
+        response = await llm.ainvoke(lc_messages)
+        coach_reply = response.content
+    except Exception as exc:
+        logger.warning("[COACH] LLM unavailable, using local response: %s", exc)
+        fallacies = state.get("detected_fallacies", [])
+        missing = state.get("rule_engine_result", {}).get("gap_fields", [])
+        focus = fallacies[0]["description"] if fallacies else "当前描述已经形成基础闭环"
+        coach_reply = (
+            "当前使用本地诊断模式：AI 服务暂时不可用，先用规则引擎给你反馈。\n\n"
+            f"**最需要验证的点**：{focus}\n\n"
+            "不要先扩展功能，请先补齐一条可验证证据。"
+        )
+        if missing:
+            coach_reply += f"\n\n缺失字段：{', '.join(dict.fromkeys(missing[:3]))}。"
 
     # 提取唯一任务与思考过程
     next_task = _extract_task(coach_reply)

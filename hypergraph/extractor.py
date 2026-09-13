@@ -64,6 +64,9 @@ EXTRACTION_SYSTEM_PROMPT = """你是一个商业要素提取专家。从学生�
 
 async def extract_business_elements(text: str, conversation_history: list) -> dict:
     """从学生输入和对话历史中提取结构化商业要素"""
+    if not os.getenv("DEEPSEEK_API_KEY") or os.getenv("DEEPSEEK_API_KEY") == "your_deepseek_api_key_here":
+        return _empty_extraction()
+
     llm = get_llm()
 
     # 取最近6条对话作为上下文
@@ -85,7 +88,10 @@ async def extract_business_elements(text: str, conversation_history: list) -> di
         HumanMessage(content=user_content),
     ]
 
-    response = await llm.ainvoke(messages)
+    try:
+        response = await llm.ainvoke(messages)
+    except Exception:
+        return _empty_extraction()
 
     try:
         content = response.content.strip()
