@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>知识图谱 & 超图统计分析</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body,html{width:100%;min-height:100vh;background:#0a0e1a;color:#e2e8f0;font-family:'Inter',sans-serif}
+.page-header{background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 50%,#0f172a 100%);padding:40px 48px 32px;border-bottom:1px solid rgba(99,102,241,.2)}
+.page-header h1{font-size:28px;font-weight:700;background:linear-gradient(135deg,#818cf8,#38bdf8,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
+.page-header p{color:#94a3b8;font-size:14px}
+.nav-back{display:inline-flex;align-items:center;gap:6px;color:#818cf8;text-decoration:none;font-size:13px;margin-bottom:16px;transition:color .2s}
+.nav-back:hover{color:#a5b4fc}
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;padding:24px 48px}
+.kpi-card{background:linear-gradient(145deg,rgba(30,27,75,.6),rgba(15,23,42,.8));border:1px solid rgba(99,102,241,.15);border-radius:14px;padding:20px 24px;text-align:center;transition:transform .25s,border-color .25s}
+.kpi-card:hover{transform:translateY(-3px);border-color:rgba(99,102,241,.4)}
+.kpi-val{font-size:32px;font-weight:700;background:linear-gradient(135deg,#38bdf8,#818cf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.kpi-label{font-size:12px;color:#94a3b8;margin-top:6px;text-transform:uppercase;letter-spacing:.5px}
+.charts-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;padding:8px 48px 48px}
+.chart-card{background:rgba(15,23,42,.7);border:1px solid rgba(99,102,241,.12);border-radius:14px;padding:24px;backdrop-filter:blur(12px);transition:border-color .3s}
+.chart-card:hover{border-color:rgba(99,102,241,.3)}
+.chart-card.full-width{grid-column:1/-1}
+.chart-title{font-size:15px;font-weight:600;color:#c7d2fe;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.chart-title .icon{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px}
+.chart-box{width:100%;height:340px}
+.chart-box.tall{height:400px}
+@media(max-width:900px){.charts-grid{grid-template-columns:1fr}.kpi-row{grid-template-columns:repeat(2,1fr)}.page-header,.kpi-row,.charts-grid{padding-left:20px;padding-right:20px}}
+</style>
+</head>
+<body>
+<div class="page-header">
+  <a href="/" class="nav-back">← 返回主页</a>
+  <h1>📊 知识图谱 & 超图节点统计分析</h1>
+  <p>基于顶级赛事标杆项目知识库（互联网+/挑战杯）百强项目数据</p>
+</div>
+
+<div class="kpi-row">
+  <div class="kpi-card"><div class="kpi-val" id="kpiNodes">--</div><div class="kpi-label">总节点数</div></div>
+  <div class="kpi-card"><div class="kpi-val" id="kpiEdges">--</div><div class="kpi-label">关系边数</div></div>
+  <div class="kpi-card"><div class="kpi-val" id="kpiHE">--</div><div class="kpi-label">超图逻辑簇</div></div>
+  <div class="kpi-card"><div class="kpi-val" id="kpiSrc">--</div><div class="kpi-label">标杆项目来源</div></div>
+  <div class="kpi-card"><div class="kpi-val" id="kpiRel">--</div><div class="kpi-label">关系类型数</div></div>
+  <div class="kpi-card"><div class="kpi-val" id="kpiAvgHE">--</div><div class="kpi-label">簇均节点数</div></div>
+</div>
+
+<div class="charts-grid">
+  <!-- 行业分布 -->
+  <div class="chart-card">
+    <div class="chart-title"><span class="icon" style="background:rgba(99,102,241,.15);color:#818cf8">🏢</span>行业领域分布 (Industry)</div>
+    <div class="chart-box" id="chartIndustry"></div>
+  </div>
+  
+  <!-- 层级分布 -->
+  <div class="chart-card">
+    <div class="chart-title"><span class="icon" style="background:rgba(245,158,11,.15);color:#fbbf24">🎓</span>项目级别分布 (Level)</div>
+    <div class="chart-box" id="chartLevel"></div>
+  </div>
+
+  <div class="chart-card"><div class="chart-title"><span class="icon" style="background:rgba(99,102,241,.2)">🧩</span>节点类型分布</div><div class="chart-box" id="chartNodeType"></div></div>
+  <div class="chart-card"><div class="chart-title"><span class="icon" style="background:rgba(56,189,248,.2)">🔗</span>关系类型 TOP-15</div><div class="chart-box" id="chartRelType"></div></div>
+  <div class="chart-card"><div class="chart-title"><span class="icon" style="background:rgba(167,139,250,.2)">⭐</span>节点度数 TOP-15</div><div class="chart-box" id="chartDegree"></div></div>
+  <div class="chart-card"><div class="chart-title"><span class="icon" style="background:rgba(251,191,36,.2)">📂</span>标杆项目来源 TOP-10</div><div class="chart-box" id="chartSource"></div></div>
+  <div class="chart-card"><div class="chart-title"><span class="icon" style="background:rgba(52,211,153,.2)">🌐</span>超图逻辑簇规模分布</div><div class="chart-box" id="chartHESize"></div></div>
+  <div class="chart-card"><div class="chart-title"><span class="icon" style="background:rgba(244,114,182,.2)">🔥</span>超图高频参与节点 TOP-10</div><div class="chart-box" id="chartHEFreq"></div></div>
+  <div class="chart-card full-width"><div class="chart-title"><span class="icon" style="background:rgba(99,102,241,.2)">🕸️</span>知识图谱全局力导向视图（可交互）</div><div class="chart-box tall" id="chartForce"></div></div>
+</div>
+
+<script>
+const S = {"total_nodes": 1695, "total_edges": 1424, "total_hyperedges": 238, "avg_he_size": 4.9, "max_he_size": 10, "min_he_size": 3, "unique_sources": 87, "unique_rel_types": 253, "industry_dist": [{"name": "科技创新", "value": 521}, {"name": "工业制造", "value": 170}, {"name": "医疗健康", "value": 169}, {"name": "交通运输", "value": 159}, {"name": "教育教学", "value": 157}, {"name": "其他", "value": 151}, {"name": "政务管理", "value": 117}, {"name": "农业发展", "value": 114}, {"name": "环境保护", "value": 104}, {"name": "文化旅游", "value": 33}], "level_dist": [{"name": "未知", "value": 521}, {"name": "本科", "value": 457}, {"name": "博士", "value": 429}, {"name": "硕士", "value": 288}], "node_type_dist": [{"name": "核心技术", "value": 502}, {"name": "核心痛点", "value": 316}, {"name": "解决方案", "value": 261}, {"name": "目标用户", "value": 233}, {"name": "商业模式", "value": 227}, {"name": "外部环境", "value": 16}, {"name": "团队成员", "value": 11}, {"name": "团队", "value": 7}, {"name": "合作伙伴", "value": 6}, {"name": "价值主张", "value": 6}, {"name": "市场环境", "value": 6}, {"name": "目标用户/应用场景", "value": 6}, {"name": "核心资源", "value": 6}, {"name": "目标用户/合作伙伴", "value": 5}, {"name": "性能指标", "value": 5}, {"name": "现存问题", "value": 4}, {"name": "目标市场", "value": 4}, {"name": "核心团队", "value": 4}, {"name": "核心功能", "value": 4}, {"name": "政策环境", "value": 4}, {"name": "媒体认可", "value": 4}, {"name": "社会效益", "value": 4}, {"name": "宏观环境", "value": 3}, {"name": "核心痛点/解决方案", "value": 3}, {"name": "学术成果", "value": 3}, {"name": "战略", "value": 2}, {"name": "背景优势", "value": 2}, {"name": "社会价值", "value": 2}, {"name": "核心痛点/技术挑战", "value": 2}, {"name": "核心价值", "value": 2}, {"name": "数据/资源", "value": 2}, {"name": "时代背景", "value": 2}, {"name": "其他", "value": 2}, {"name": "应用案例", "value": 2}, {"name": "政策支持", "value": 2}, {"name": "目标用户/竞争对手", "value": 2}, {"name": "市场扩展", "value": 1}, {"name": "应用场景", "value": 1}, {"name": "商业模式/应用领域", "value": 1}, {"name": "商业模式/核心技术", "value": 1}, {"name": "目标用户/背书", "value": 1}, {"name": "团队优势", "value": 1}, {"name": "项目价值", "value": 1}, {"name": "政策依据", "value": 1}, {"name": "目标用户/驱动因素", "value": 1}, {"name": "解决方案/成果", "value": 1}, {"name": "核心痛点/目标应用", "value": 1}, {"name": "目标应用/核心痛点", "value": 1}, {"name": "商业模式/外部环境", "value": 1}, {"name": "商业模式/目标", "value": 1}, {"name": "核心技术/护城河", "value": 1}, {"name": "验证与里程碑", "value": 1}, {"name": "性能指标/竞争优势", "value": 1}, {"name": "实施方式", "value": 1}, {"name": "公司", "value": 1}, {"name": "产品", "value": 1}, {"name": "目标用户/客户", "value": 1}, {"name": "核心技术/知识产权", "value": 1}, {"name": "核心支撑", "value": 1}], "source_dist": [{"name": "510668-智能纳米光学偏振内窥镜胶囊", "value": 37}, {"name": "536827-文思智铠——生成式大_全优", "value": 30}, {"name": "禾光智能——智能激光除草机器人系统.pd", "value": 30}, {"name": "482709-千钧问鼎——尖端超高_自主", "value": 28}, {"name": "指导案例——夜视鹰瞳项目商业计划书.do", "value": 28}, {"name": "532268-面向低空经济的人工智_感知", "value": 26}, {"name": "458152-“预行智控”——面向_智能", "value": 26}, {"name": "476164-智禾——以“小白菜”_态监", "value": 26}, {"name": "482648-医联农村，e路助农—_化路", "value": 26}, {"name": "475594-智擎风控——跨平台多_同治", "value": 25}], "rel_dist": [{"name": "解决", "value": 284}, {"name": "依赖于", "value": 266}, {"name": "服务于", "value": 109}, {"name": "基于", "value": 42}, {"name": "应用于", "value": 38}, {"name": "包含", "value": 36}, {"name": "实现", "value": 28}, {"name": "面向", "value": 27}, {"name": "构成", "value": 22}, {"name": "支持", "value": 20}, {"name": "属于", "value": 16}, {"name": "缓解", "value": 15}, {"name": "服务", "value": 15}, {"name": "采用", "value": 13}, {"name": "推动", "value": 11}], "he_size_dist": [{"size": 3, "count": 12}, {"size": 4, "count": 92}, {"size": 5, "count": 75}, {"size": 6, "count": 32}, {"size": 7, "count": 15}, {"size": 8, "count": 10}, {"size": 10, "count": 2}], "top_degree_nodes": [{"name": "禾光智能", "degree": 37}, {"name": "元界创生", "degree": 23}, {"name": "Greta Oto智能纳米光学胶", "degree": 21}, {"name": "预行智控机器人", "degree": 18}, {"name": "视界智通系统", "degree": 15}, {"name": "人机协作的数据提质", "degree": 15}, {"name": "任务感知的关系透视", "degree": 15}, {"name": "AI旅行社交平台", "degree": 15}, {"name": "声学巡检机器人系统", "degree": 14}, {"name": "数据优选的模型提效", "degree": 14}, {"name": "无接触式健康监测与AI辅助移动机", "degree": 13}, {"name": "灵枢微创手术机器人", "degree": 13}, {"name": "多模态交互式教育系统", "degree": 12}, {"name": "农业智能问答系统", "degree": 11}, {"name": "术中实时诊断系统", "degree": 11}], "top_he_nodes": [{"name": "国家政策支持", "freq": 4}, {"name": "SaaS服务", "freq": 4}, {"name": "政策支持", "freq": 3}, {"name": "智能决策与协同互联", "freq": 3}, {"name": "具身操作（控）", "freq": 3}, {"name": "数据服务", "freq": 3}, {"name": "远程光电容积描记技术(rPPG)", "freq": 3}, {"name": "边缘-云协同计算架构", "freq": 3}, {"name": "基于大模型的中医脉诊辨证治疗", "freq": 3}, {"name": "基于深度学习的红外无损检测智能系", "freq": 3}]};
+// KPI
+document.getElementById('kpiNodes').textContent = S.total_nodes;
+document.getElementById('kpiEdges').textContent = S.total_edges;
+document.getElementById('kpiHE').textContent = S.total_hyperedges;
+document.getElementById('kpiSrc').textContent = S.unique_sources;
+document.getElementById('kpiRel').textContent = S.unique_rel_types;
+document.getElementById('kpiAvgHE').textContent = S.avg_he_size;
+
+const COLORS = ['#818cf8','#38bdf8','#a78bfa','#34d399','#fbbf24','#f472b6','#fb923c','#22d3ee','#c084fc','#4ade80','#facc15','#f87171','#2dd4bf','#e879f9','#60a5fa'];
+const darkTheme = { backgroundColor:'transparent', textStyle:{color:'#94a3b8'}, tooltip:{backgroundColor:'rgba(15,23,42,.95)',borderColor:'#334155',textStyle:{color:'#e2e8f0'}} };
+
+// 1. 行业分布 - 饼图
+echarts.init(document.getElementById('chartIndustry')).setOption({...darkTheme,
+  series:[{type:'pie',radius:['0%','60%'],center:['50%','52%'],
+    data:(S.industry_dist||[]).map((d,i)=>({value:d.value,name:d.name,itemStyle:{color:COLORS[i%COLORS.length]}})),
+    label:{color:'#cbd5e1',fontSize:10,formatter:'{b}\n{c}个'},itemStyle:{borderRadius:2,borderColor:'#0a0e1a',borderWidth:1}}]
+});
+
+// 2. 层级分布 - 玫瑰图
+echarts.init(document.getElementById('chartLevel')).setOption({...darkTheme,
+  series:[{type:'pie',roseType:'area',radius:['20%','70%'],center:['50%','52%'],
+    data:(S.level_dist||[]).map((d,i)=>({value:d.value,name:d.name,itemStyle:{color:COLORS[(i+3)%COLORS.length]}})),
+    label:{color:'#cbd5e1',fontSize:11},itemStyle:{borderRadius:6,borderColor:'#0a0e1a',borderWidth:2}}]
+});
+
+// 3. 节点类型 - 玫瑰图
+echarts.init(document.getElementById('chartNodeType')).setOption({...darkTheme,
+  series:[{type:'pie',roseType:'area',radius:['20%','70%'],center:['50%','52%'],
+    data:S.node_type_dist.map((d,i)=>({value:d.value,name:d.name,itemStyle:{color:COLORS[i%COLORS.length]}})),
+    label:{color:'#cbd5e1',fontSize:11},itemStyle:{borderRadius:6,borderColor:'#0a0e1a',borderWidth:2}}]
+});
+
+// 2. 关系类型 - 横向柱状图
+echarts.init(document.getElementById('chartRelType')).setOption({...darkTheme,
+  grid:{left:120,right:30,top:10,bottom:30},
+  xAxis:{type:'value',splitLine:{lineStyle:{color:'rgba(99,102,241,.1)'}}},
+  yAxis:{type:'category',data:S.rel_dist.map(d=>d.name).reverse(),axisLabel:{color:'#94a3b8',fontSize:10,width:100,overflow:'truncate'}},
+  series:[{type:'bar',data:S.rel_dist.map(d=>d.value).reverse(),barWidth:14,
+    itemStyle:{borderRadius:[0,6,6,0],color:new echarts.graphic.LinearGradient(0,0,1,0,[{offset:0,color:'#6366f1'},{offset:1,color:'#38bdf8'}])},
+    label:{show:true,position:'right',color:'#94a3b8',fontSize:10}}]
+});
+
+// 3. 度数 TOP - 柱状图
+echarts.init(document.getElementById('chartDegree')).setOption({...darkTheme,
+  grid:{left:130,right:30,top:10,bottom:30},
+  xAxis:{type:'value',splitLine:{lineStyle:{color:'rgba(99,102,241,.1)'}}},
+  yAxis:{type:'category',data:S.top_degree_nodes.map(d=>d.name).reverse(),axisLabel:{color:'#94a3b8',fontSize:10}},
+  series:[{type:'bar',data:S.top_degree_nodes.map(d=>d.degree).reverse(),barWidth:14,
+    itemStyle:{borderRadius:[0,6,6,0],color:new echarts.graphic.LinearGradient(0,0,1,0,[{offset:0,color:'#a78bfa'},{offset:1,color:'#f472b6'}])},
+    label:{show:true,position:'right',color:'#94a3b8',fontSize:10}}]
+});
+
+// 4. 来源 - 环形图
+echarts.init(document.getElementById('chartSource')).setOption({...darkTheme,
+  series:[{type:'pie',radius:['38%','68%'],center:['50%','52%'],
+    data:S.source_dist.map((d,i)=>({value:d.value,name:d.name,itemStyle:{color:COLORS[i%COLORS.length]}})),
+    label:{color:'#cbd5e1',fontSize:10,formatter:'{b}\n{c}个'},itemStyle:{borderRadius:4,borderColor:'#0a0e1a',borderWidth:2}}]
+});
+
+// 5. 超图规模分布 - 柱状图
+echarts.init(document.getElementById('chartHESize')).setOption({...darkTheme,
+  grid:{left:50,right:30,top:20,bottom:40},
+  xAxis:{type:'category',data:S.he_size_dist.map(d=>d.size+'个节点'),axisLabel:{color:'#94a3b8'}},
+  yAxis:{type:'value',splitLine:{lineStyle:{color:'rgba(99,102,241,.1)'}}},
+  series:[{type:'bar',data:S.he_size_dist.map(d=>d.count),barWidth:28,
+    itemStyle:{borderRadius:[6,6,0,0],color:new echarts.graphic.LinearGradient(0,1,0,0,[{offset:0,color:'#34d399'},{offset:1,color:'#22d3ee'}])},
+    label:{show:true,position:'top',color:'#94a3b8'}}]
+});
+
+// 6. 超图高频节点 - 柱状图
+echarts.init(document.getElementById('chartHEFreq')).setOption({...darkTheme,
+  grid:{left:130,right:30,top:10,bottom:30},
+  xAxis:{type:'value',splitLine:{lineStyle:{color:'rgba(99,102,241,.1)'}}},
+  yAxis:{type:'category',data:S.top_he_nodes.map(d=>d.name).reverse(),axisLabel:{color:'#94a3b8',fontSize:10}},
+  series:[{type:'bar',data:S.top_he_nodes.map(d=>d.freq).reverse(),barWidth:14,
+    itemStyle:{borderRadius:[0,6,6,0],color:new echarts.graphic.LinearGradient(0,0,1,0,[{offset:0,color:'#fbbf24'},{offset:1,color:'#f472b6'}])},
+    label:{show:true,position:'right',color:'#94a3b8',fontSize:10}}]
+});
+
+// 7. 力导向图 - 通过 API 异步加载
+const forceChart = echarts.init(document.getElementById('chartForce'));
+forceChart.showLoading({text:'加载图谱数据…',color:'#818cf8',maskColor:'rgba(10,14,26,0.8)'});
+fetch('/api/graph-data').then(r=>r.json()).then(graphData=>{
+  forceChart.hideLoading();
+  const cats = [...new Set(graphData.nodes.map(n=>n.type))].concat(['📜逻辑超边']);
+  const catMap = Object.fromEntries(cats.map((c,i)=>[c,i]));
+  const nodeIds = new Set(graphData.nodes.map(n=>n.id));
+  
+  let heNodes = [];
+  let heEdges = [];
+  if(graphData.hyperedges) {
+     graphData.hyperedges.forEach((he, idx) => {
+         const heId = 'HE_' + encodeURIComponent(he.id) + '_' + idx;
+         heNodes.push({name: heId, category: catMap['📜逻辑超边'], symbolSize: 22, itemStyle: {color: '#fbbf24', borderColor: '#b45309', borderWidth: 2}, label: {show: true, formatter: '超边', color: '#fff', fontSize:10}, desc: he.description || he.rule_name || he.id });
+         const connectedNodes = he.nodes || he.entities || [];
+         connectedNodes.forEach(ent => {
+             if (nodeIds.has(ent)) {
+                 heEdges.push({source: heId, target: ent, lineStyle: {type: 'dashed', color: '#fbbf24'}});
+             }
+         });
+     });
+  }
+
+  const finalNodes = graphData.nodes.map(n=>({name:n.id,category:catMap[n.type],symbolSize:n.type==='解决方案'?18:10,label:{show:false}})).concat(heNodes);
+  const finalEdges = graphData.edges.map(e=>({source:e.source,target:e.target})).concat(heEdges);
+
+  forceChart.setOption({
+    backgroundColor:'transparent',
+    tooltip:{trigger:'item',backgroundColor:'rgba(15,23,42,.95)',borderColor:'#334155',textStyle:{color:'#e2e8f0'},
+      formatter: function(p) { 
+        if(p.data.desc) {
+            let t = p.data.name;
+            if(t.startsWith('HE_')) {
+                try { t = decodeURIComponent(t.substring(3, t.lastIndexOf('_'))); } catch(e) {}
+            }
+            return '<div style="white-space:normal;word-break:break-all;max-width:400px;line-height:1.5;">' +
+                   '<div style="color:#fbbf24;font-weight:bold;font-size:13px;margin-bottom:6px;">' + t + '</div>' +
+                   '<div style="color:#cbd5e1;font-size:12px;">' + p.data.desc + '</div></div>';
+        }
+        return p.data.name; 
+      }
+    },
+    legend:{data:cats,textStyle:{color:'#94a3b8'},bottom:5,type:'scroll'},
+    series:[{type:'graph',layout:'force',roam:true,
+      data: finalNodes,
+      links: finalEdges,
+      categories:cats.map((c,i)=>({name:c,itemStyle:{color:COLORS[i%COLORS.length]}})),
+      force:{repulsion:300,edgeLength:100,gravity:0.05},
+      lineStyle:{color:'source',curveness:0.2,opacity:0.3,width:0.8},
+      emphasis:{focus:'adjacency',lineStyle:{width:3,opacity:1},label:{show:true,color:'#f8fafc',fontSize:12}}
+    }]
+  });
+}).catch(e=>{
+  forceChart.hideLoading();
+  console.error("Force chart error:", e);
+  document.getElementById('chartForce').innerHTML='<div style="color:#f87171;padding:20px;word-wrap:break-word;">图谱数据加载失败: ' + String(e) + '<br/>' + (e.stack || '') + '</div>';
+});
+window.addEventListener('resize',()=>{
+  document.querySelectorAll('.chart-box').forEach(el=>{const c=echarts.getInstanceByDom(el);c&&c.resize();});
+});
+</script>
+</body>
+</html>

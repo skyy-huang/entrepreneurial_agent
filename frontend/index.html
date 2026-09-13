@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>双创智能教练</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet" href="/static/css/style.css?v=4" />
+</head>
+<body>
+  <!-- ══════════════════════════════════════════════════
+       登录/新建会话 遮罩（学生端）
+  ══════════════════════════════════════════════════ -->
+  <div class="overlay" id="overlay">
+    <div class="setup-card">
+      <div class="setup-logo">⚡</div>
+      <h1 class="setup-title">双创智能教练</h1>
+      <p class="setup-desc">
+        这不是帮你写商业计划书的 AI。<br />
+        这是一个会对你的逻辑漏洞穷追猛打的导师。<br />
+        <strong>准备好了吗？</strong>
+      </p>
+      <div class="setup-form">
+        <input
+          type="text"
+          id="studentIdInput"
+          class="setup-input"
+          placeholder="请输入你的学号或姓名"
+          maxlength="50"
+          autocomplete="off"
+        />
+        <input
+          type="password"
+          id="studentPasswordInput"
+          class="setup-input"
+          placeholder="输入密码 (首次登录自动注册)"
+          maxlength="50"
+          autocomplete="off"
+        />
+        <button class="btn-primary" id="startBtn">开始挑战 →</button>
+      </div>
+      <p class="setup-hint">已有会话？<a href="#" id="resumeLink">输入会话ID恢复</a></p>
+      <div class="resume-area hidden" id="resumeArea">
+        <input
+          type="text"
+          id="resumeInput"
+          class="setup-input"
+          placeholder="输入会话 ID（8位）"
+          maxlength="8"
+        />
+        <button class="btn-secondary" id="resumeBtn">恢复会话</button>
+      </div>
+      <!-- 统一入口：点击后弹出教师登录 -->
+      <a href="#" class="teacher-entry" id="showTeacherLogin">教师端入口 →</a>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════
+       教师登录弹窗（共享，两个入口触发）
+  ══════════════════════════════════════════════════ -->
+  <div class="overlay hidden" id="teacherLoginOverlay">
+    <div class="setup-card" style="max-width: 380px;">
+      <h1 class="setup-title" style="margin-top:0;">👨‍🏫 教师端登录</h1>
+      <p class="setup-desc" style="margin-bottom:20px;">
+        仅限具有权限的教学管理人员访问
+      </p>
+      <div class="setup-form">
+        <input type="text" id="teacherUsername" class="setup-input" placeholder="输入教师账号 (如: admin)" />
+        <input type="password" id="teacherPassword" class="setup-input" placeholder="输入密码" />
+        <button id="loginSubmitBtn" class="btn-primary" style="width:100%; margin-top:10px;">登录</button>
+        <p id="loginErrorMsg" style="color:#ef4444; font-size:13px; text-align:center; height:20px; margin-top:10px;"></p>
+      </div>
+      <a href="#" class="teacher-entry" id="backToStudent" style="margin-top:16px;">← 返回学生端</a>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════
+       主界面（含角色切换器）
+  ══════════════════════════════════════════════════ -->
+  <div class="app-layout hidden" id="appLayout">
+    <!-- 顶部导航 -->
+    <header class="topbar">
+      <div class="topbar-left" style="display:flex; align-items:center; gap: 14px;">
+        <span class="topbar-logo">⚡ 双创智能教练</span>
+        <span class="phase-badge" id="phaseBadge">价值探测</span>
+        
+        <!-- 智能体模式选择器 -->
+        <select id="agentModeSelect" style="margin-left: 10px; padding: 4px 8px; border-radius: 4px; background: var(--bg-input); color: var(--text); border: 1px solid var(--border); font-size: 13px; cursor: pointer; outline: none;">
+          <option value="coach" selected>👨‍🏫 项目教练模式</option>
+          <option value="tutor">📚 学习辅导模式</option>
+          <option value="competition">🏆 竞赛顾问模式</option>
+        </select>
+      </div>
+      <div class="topbar-right">
+        <!-- 角色切换器（核心新功能） -->
+        <div class="role-switcher" id="roleSwitcher">
+          <button class="role-tab active" data-role="student" id="tabStudent">
+            <span class="role-icon">🎓</span> 学生端
+          </button>
+          <button class="role-tab" data-role="teacher" id="tabTeacher">
+            <span class="role-icon">👨‍🏫</span> 教师端
+          </button>
+          <div class="role-slider" id="roleSlider"></div>
+        </div>
+        <span class="round-info" id="roundInfoWrap">第 <strong id="roundCount">0</strong> 轮</span>
+        <span class="session-info" id="sessionInfo"></span>
+        <a href="/graph-stats" class="link-btn">📊 图谱统计</a>
+        <button class="link-btn" id="newSessionBtn">重新开始</button>
+      </div>
+    </header>
+
+    <!-- ══════════════════════════════════════════════════
+         学生端视图
+    ══════════════════════════════════════════════════ -->
+    <div class="main-content" id="studentView">
+      
+      <!-- ── 左侧：历史侧边栏 ── -->
+      <aside class="history-sidebar" id="historySidebar" style="display:none;">
+        <button class="btn-primary" id="newSessionSidebarBtn" style="width:100%; margin-bottom:16px;">+ 新建会话</button>
+        <div class="history-list" id="historyList"></div>
+      </aside>
+
+      <!-- ── 中间：对话区 ── -->
+      <section class="chat-section">
+        <div class="messages-wrap" id="messagesWrap">
+          <div class="message assistant" id="welcomeMsg">
+            <!-- 欢迎消息由 JS 注入 -->
+          </div>
+        </div>
+        <div class="input-wrap" style="position: relative;">
+          <!-- 附件预览区域 -->
+          <div id="filePreview" style="display:none; padding: 10px 14px; background: rgba(30, 41, 59, 0.7); border-radius: 10px; border: 1px solid #334155; margin-bottom: 8px; align-items: center; justify-content: space-between; gap: 12px; width: fit-content; max-width: 100%;">
+            <div style="display:flex; align-items:center; gap: 12px; overflow: hidden;">
+               <div id="fileIconBox" style="background: #ef4444; color: white; width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; flex-shrink: 0;">PDF</div>
+               <div style="display:flex; flex-direction: column; overflow: hidden;">
+                 <span id="fileName" style="font-weight: 500; color: #e2e8f0; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;"></span>
+                 <span id="fileSizeHint" style="font-size: 11px; color: #94a3b8;"></span>
+               </div>
+            </div>
+            <button id="removeFileBtn" style="background: rgba(255,255,255,0.1); border: none; cursor: pointer; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 12px; transition: background 0.2s;" title="移除附件" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">✕</button>
+          </div>
+          <textarea
+            id="userInput"
+            class="msg-input"
+            placeholder="描述你的创业想法，或上传计划书…（Ctrl+Enter 发送）"
+            rows="3"
+            style="background: transparent;"
+          ></textarea>
+          <div class="input-actions" style="display:flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+            <div style="display:flex; align-items: center; gap: 10px;">
+              <input type="file" id="fileUpload" style="display:none;" accept=".pdf,.doc,.docx,.txt" />
+              <button id="uploadBtn" style="background: none; border: none; font-size: 20px; color: #94a3b8; cursor: pointer; padding: 4px; transition: color 0.2s; display: flex; align-items: center; justify-content: center;" title="上传附件" onmouseover="this.style.color='#f8fafc'" onmouseout="this.style.color='#94a3b8'">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+              </button>
+            </div>
+            <div style="display:flex; gap: 10px; align-items:center;">                <button class="btn-secondary" id="financialBtn" style="padding: 0 16px; border-radius: 20px; font-size: 13px; font-weight: 500; height: 36px; background: rgba(245, 158, 11, 0.1); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); opacity: 0.8; cursor: pointer; transition: all 0.2s;" disabled title="一键对当前商业计划书生成专属全量财务模型分析" onmouseover="if(!this.disabled) this.style.opacity='1'" onmouseout="if(!this.disabled) this.style.opacity='0.8'">
+                  💰 财务诊断
+                </button>              <button class="btn-secondary" id="competitionBtn" style="padding: 0 16px; border-radius: 20px; font-size: 13px; font-weight: 500; height: 36px; background: rgba(59, 130, 246, 0.1); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); opacity: 0.8; cursor: pointer; transition: all 0.2s;" disabled title="一键调用互联网+竞赛盲打分模型评价(R1-R9)" onmouseover="if(!this.disabled) this.style.opacity='1'" onmouseout="if(!this.disabled) this.style.opacity='0.8'">
+                🏆 竞赛评审
+              </button>
+              <button class="btn-send" id="sendBtn" disabled>
+                <span id="sendLabel">发 送</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── 右侧：分析面板 ── -->
+      <aside class="analytics-section">
+        <!-- 能力图谱雷达图 -->
+        <div class="panel-card">
+          <div class="panel-header">
+            <span class="panel-icon">🎯</span>
+            <span class="panel-title">能力图谱</span>
+          </div>
+          <div class="radar-wrap">
+            <canvas id="radarChart"></canvas>
+          </div>
+          <div class="scores-grid" id="scoresGrid"></div>
+        </div>
+
+        <!-- 逻辑审计结果 -->
+        <div class="panel-card" id="fallaciesCard">
+          <div class="panel-header">
+            <span class="panel-icon">⚠️</span>
+            <span class="panel-title">逻辑审计结果</span>
+            <span class="badge" id="fallacyCount">0</span>
+          </div>
+          <div class="fallacies-list" id="fallaciesList">
+            <p class="empty-hint">等待教练分析中…</p>
+          </div>
+        </div>
+
+        <!-- 知识图谱调用日志面板 -->
+        <div class="panel-card" id="kgLogCard">
+          <div class="panel-header">
+            <span class="panel-icon">🕸️</span>
+            <span class="panel-title">图谱寻路与调用日志</span>
+          </div>
+          <div class="kg-logs-list" id="kgLogsList" style="max-height: 220px; overflow-y: auto; font-size: 12px; color: #cbd5e1; font-family: monospace;">
+             <p class="empty-hint">等待知识图谱调度...</p>
+          </div>
+        </div>
+
+        <!-- 当前任务 -->
+        <div class="panel-card task-highlight hidden" id="taskCard">
+          <div class="panel-header">
+            <span class="panel-icon">📋</span>
+            <span class="panel-title">当前行动任务</span>
+          </div>
+          <p class="task-text" id="taskText"></p>
+        </div>
+
+        <!-- 超图摘要 -->
+        <div class="panel-card hidden" id="hypergraphCard">
+          <div class="panel-header">
+            <span class="panel-icon">🗂️</span>
+            <span class="panel-title">项目结构图谱</span>
+          </div>
+          <pre class="hypergraph-pre" id="hypergraphPre"></pre>
+        </div>
+
+          <!-- 专项财务分析面板 -->
+          <div class="panel-card hidden" id="financialCard">
+            <div class="panel-header" style="justify-content:space-between;">
+              <div>
+                <span class="panel-icon">💰</span>
+                <span class="panel-title">专项财务与模型分析</span>
+              </div>
+            </div>
+            <div id="financialContent" style="padding: 12px; font-size: 13px; color: #e2e8f0; line-height: 1.6; white-space: pre-wrap; font-family: sans-serif; background: rgba(30,41,59,0.5); border-radius: 6px; border: 1px solid rgba(245,158,11,0.2);">暂无分析。请在左侧上传BP或填写项目后使用「财务诊断」功能。</div>
+          </div>
+      </aside>
+    </div> <!-- /studentView -->
+
+    <!-- ══════════════════════════════════════════════════
+         教师端视图（嵌入式，无需跳转）
+    ══════════════════════════════════════════════════ -->
+    <div class="teacher-dashboard hidden" id="teacherView">
+      <!-- 教师端子导航栏 -->
+      <div class="teacher-sub-bar">
+        <span class="teacher-welcome" id="teacherWelcome">未登录</span>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <span class="last-update" id="lastUpdate">–</span>
+          <button class="btn-primary btn-sm" id="refreshBtn">🔄 刷新</button>
+          <button class="btn-danger btn-sm" id="logoutBtn" style="display:none;">注销</button>
+        </div>
+      </div>
+
+      <!-- 摘要卡片 -->
+      <div class="summary-row">
+        <div class="summary-card">
+          <div class="sc-number" id="totalTeams">–</div>
+          <div class="sc-label">参与团队</div>
+        </div>
+        <div class="summary-card sc-danger">
+          <div class="sc-number" id="highRiskCount">–</div>
+          <div class="sc-label">高风险项目</div>
+        </div>
+        <div class="summary-card sc-success">
+          <div class="sc-number" id="improvingCount">–</div>
+          <div class="sc-label">持续进步团队</div>
+        </div>
+        <div class="summary-card sc-info">
+          <div class="sc-number" id="improvementRate">–</div>
+          <div class="sc-label">进步率</div>
+        </div>
+        <div class="summary-card sc-warn">
+          <div class="sc-number" id="stagnantCount">–</div>
+          <div class="sc-label">停滞团队</div>
+        </div>
+      </div>
+
+      <!-- 教学建议（全宽） -->
+      <div class="db-card full-width">
+        <div class="db-card-header">
+          <span>🎯 本周教学干预建议</span>
+        </div>
+        <div class="suggestions-list" id="suggestionsList">
+          <p class="loading-hint">加载中…</p>
+        </div>
+      </div>
+
+      <!-- 两列布局 -->
+      <div class="db-two-col">
+        <!-- 规则触发排行榜 -->
+        <div class="db-card">
+          <div class="db-card-header">
+            <span>🚨 班级共性错误排行榜（H1-H15）</span>
+          </div>
+          <div class="chart-wrap" style="height:300px">
+            <canvas id="ruleBarChart"></canvas>
+          </div>
+          <div class="rule-detail-list" id="ruleDetailList"></div>
+        </div>
+
+        <!-- 班级能力图谱 -->
+        <div class="db-card">
+          <div class="db-card-header">
+            <span>📈 班级平均能力图谱</span>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="classRadarChart"></canvas>
+          </div>
+          <div class="db-card-header" style="margin-top:16px">
+            <span>📍 学习阶段分布</span>
+          </div>
+          <div class="chart-wrap" style="height:180px">
+            <canvas id="phaseChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- 团队详情表 -->
+      <div class="db-card full-width">
+        <div class="db-card-header">
+          <span>👥 团队详情列表</span>
+          <input type="text" id="teamSearch" class="search-input" placeholder="搜索学生ID…" />
+        </div>
+        <div class="table-scroll">
+          <table class="team-table" id="teamTable">
+            <thead>
+              <tr>
+                <th>学生ID</th>
+                <th>会话ID</th>
+                <th>阶段</th>
+                <th>轮次</th>
+                <th>触发规则</th>
+                <th>痛点发现</th>
+                <th>方案策划</th>
+                <th>商业建模</th>
+                <th>资源杠杆</th>
+                <th>路演表达</th>
+                <th>综合得分</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="teamTableBody">
+              <tr><td colspan="12" class="loading-hint">暂无数据</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div><!-- /teacherView -->
+
+  </div><!-- /appLayout -->
+
+  <!-- 关联图谱弹窗 -->
+  <div class="overlay" id="graphOverlay" style="display: none;">
+    <div class="setup-card" style="max-width: 800px; width: 90%; height: 80vh; display: flex; flex-direction: column;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <h2 style="margin: 0;">🔗 关联知识图谱及超边解析</h2>
+        <button id="closeGraphBtn" class="btn-secondary btn-sm">关闭</button>
+      </div>
+      <div id="graphCanvas" style="flex: 1; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff;"></div>
+    </div>
+  </div>
+
+  <!-- JS: 先加载公共切换逻辑，再加载各端 -->
+  <script src="/static/js/role_switcher.js?v=2"></script>
+  <script src="/static/js/student.js?v=5"></script>
+  <script src="/static/js/teacher.js?v=4"></script>
+</body>
+</html>
+
