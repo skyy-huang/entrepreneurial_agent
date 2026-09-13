@@ -22,6 +22,7 @@ ENV/
 # --- 本地运行数据 ---
 storage/sessions.json
 storage/users.json
+logs/runs.jsonl
 # 如果 storage 目录下全是运行时产生的临时数据，也可以直接忽略整个文件夹：
 # storage/
 

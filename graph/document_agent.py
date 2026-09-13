@@ -39,6 +39,10 @@ async def parse_and_summarize_document(file_bytes: bytes, filename: str) -> str:
     if not text:
         return ""
 
+    api_key = os.getenv("DEEPSEEK_API_KEY", "")
+    if not api_key or api_key == "your_deepseek_api_key_here":
+        return text[:15000]
+
     # 限制分析的原文长度，避免撑爆上下文（例如15000字截断）
     text_to_summarize = text[:15000]
 

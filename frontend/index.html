@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>原点 · 创业诊断工作台</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
   <link rel="stylesheet" href="/static/css/style.css?v=8" />
 </head>
 <body class="student-page">
@@ -38,10 +40,16 @@
 
         <section class="conversation-panel">
           <div class="conversation-head"><div><div class="eyebrow">当前诊断</div><h2 id="projectTitle">新项目</h2></div><span class="phase-pill" id="phasePill">价值探测</span></div>
+          <nav class="flow-switcher" aria-label="工作流程">
+            <button class="flow-tab active" data-flow="F2">项目指导</button>
+            <button class="flow-tab" data-flow="F1">理论学习</button>
+            <button class="flow-tab" data-flow="F3">评审反馈</button>
+          </nav>
           <div class="messages" id="messagesWrap"></div>
           <form class="composer" id="composerForm">
             <textarea id="userInput" rows="3" maxlength="3000" placeholder="描述你的项目：谁遇到了什么问题？你打算怎么解决？"></textarea>
-            <div class="composer-footer"><span>Enter 换行 · Ctrl + Enter 发送</span><button class="button button-primary send-button" id="sendBtn" type="submit">发送 <span>↗</span></button></div>
+            <div id="filePreview" class="file-preview hidden"><span id="fileName"></span><button id="removeFileBtn" type="button">移除</button></div>
+            <div class="composer-footer"><div class="composer-tools"><input id="fileUpload" type="file" accept=".pdf,.doc,.docx,.txt" hidden /><button id="uploadBtn" class="tool-button" type="button" title="仅用于项目指导流程">＋ 附件</button><span>Enter 发送 · Ctrl + Enter 换行</span></div><button class="button button-primary send-button" id="sendBtn" type="submit">发送 <span>↗</span></button></div>
           </form>
         </section>
 

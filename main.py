@@ -8,9 +8,9 @@ import uuid
 import logging
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Header
+from fastapi import FastAPI, HTTPException, Header, UploadFile, File, Form
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -27,6 +27,9 @@ from graph.state import make_initial_state
 from graph.workflow import app_graph
 from teacher.dashboard import aggregate_class_data, generate_student_capability_report, generate_grading_report
 from storage import load_sessions, save_sessions, load_users, save_users
+from observability import start_run, add_step, finish_run
+from workflows import theory_response, review_response, classify_claims
+from graph.document_agent import parse_and_summarize_document
 
 app = FastAPI(title="双创智能教练 V2", version="2.0.0")
 
@@ -90,6 +93,26 @@ class ChatRequest(BaseModel):
     session_id: str
     message: str
     agent_mode: Optional[str] = "coach"
+
+
+class TheoryRequest(BaseModel):
+    question: str
+    test_id: Optional[str] = "manual"
+
+
+class ReviewRequest(BaseModel):
+    project_text: str
+    rubric: Optional[str] = "创业项目基础评审"
+    test_id: Optional[str] = "manual"
+
+
+class EvidenceRequest(BaseModel):
+    text: str
+
+
+class StudentDeleteRequest(BaseModel):
+    student_id: str
+    password: str
 
 
 class TeacherLoginRequest(BaseModel):
@@ -177,9 +200,9 @@ async def start_session(req: StartSessionRequest):
     return {
         "session_id": session_id,
         "welcome_message": (
-            "你好。为了快速帮你梳理商业逻辑并只针对致命缺口进行沟通，我们采用**少轮次高信息增益**的诊断模式。\n\n"
-            "请先填写以下《项目信息增益表》（填个大概即可，我将自动预测你的缺口并追问最关键的3个问题）：\n\n"
-            "[IG_FORM]"
+            "# 从项目事实开始\n\n"
+            "请先告诉我三件事：**谁**遇到了什么问题、他们现在如何解决、你准备改变什么结果。\n\n"
+            "> 没有调研数据也没关系，请把不确定的内容标成假设，我们会逐项验证。"
         ),
         "current_phase": "value_probe",
         "round_count": 0,
@@ -199,14 +222,24 @@ async def chat(req: ChatRequest):
     if len(message) > 3000:
         raise HTTPException(status_code=400, detail="消息过长，请控制在3000字以内")
 
+    run = start_run("F2", "manual")
+    run["session_id"] = req.session_id
+    add_step(run, "input_validation", "success", f"message_length={len(message)}")
     state = dict(sessions_store[req.session_id])
     state["current_input"] = message
-    state["agent_mode"] = req.agent_mode  # inject agent_mode
+    state["agent_mode"] = req.agent_mode
 
-    result = await app_graph.ainvoke(state)
+    try:
+        result = await app_graph.ainvoke(state)
+        add_step(run, "agent_workflow", "success", "extractor->critic->coach")
+    except Exception as exc:
+        add_step(run, "agent_workflow", "failed", type(exc).__name__)
+        finish_run(run, "failed", type(exc).__name__)
+        raise HTTPException(status_code=503, detail="项目指导暂时不可用，已有上下文已保留，请稍后安全重试") from exc
 
     sessions_store[req.session_id] = result
     save_sessions(sessions_store)
+    finish_run(run, "success")
 
     return {
         "session_id": req.session_id,
@@ -222,7 +255,130 @@ async def chat(req: ChatRequest):
         "retrieved_hyperedge_types": result.get("retrieved_hyperedge_types", []),
         "rule_engine_result": result.get("rule_engine_result", {}),
         "kb_context": result.get("kb_context", {}),
+        "run_id": run["run_id"],
     }
+
+
+@app.post("/api/learn")
+async def learn(req: TheoryRequest):
+    """F1 理论学习：解释、正反例、理解检查和来源边界。"""
+    run = start_run("F1", req.test_id or "manual")
+    if not req.question.strip():
+        add_step(run, "input_validation", "failed", "question_missing")
+        finish_run(run, "failed", "input_missing")
+        raise HTTPException(status_code=400, detail="请先输入一个学习问题")
+    add_step(run, "input_validation", "success", f"question_length={len(req.question.strip())}")
+    try:
+        result = theory_response(req.question)
+        add_step(run, "theory_response", "success", "deterministic_local_workflow")
+        finish_run(run, "success")
+        result["run_id"] = run["run_id"]
+        return result
+    except ValueError as exc:
+        finish_run(run, "failed", "input_missing")
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/upload")
+async def upload_document(
+    session_id: str = Form(...),
+    file: UploadFile = File(...),
+    message: Optional[str] = Form(None),
+):
+    """F2 文件输入：先提取文本，再交给项目指导流程审计。"""
+    if session_id not in sessions_store:
+        raise HTTPException(status_code=404, detail="会话不存在，请重新开始")
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="请选择文件")
+    allowed = {"pdf", "docx", "doc", "txt"}
+    extension = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
+    if extension not in allowed:
+        raise HTTPException(status_code=400, detail="仅支持 PDF、DOCX、DOC 或 TXT 文件")
+    file_bytes = await file.read()
+    if len(file_bytes) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="文件不能超过 10MB")
+    summary = await parse_and_summarize_document(file_bytes, file.filename)
+    if not summary:
+        raise HTTPException(status_code=422, detail="无法提取文件文本，请检查文件是否为空或为扫描图片")
+
+    run = start_run("F2", "file-upload")
+    run["session_id"] = session_id
+    add_step(run, "file_parse", "success", f"extension={extension}, bytes={len(file_bytes)}")
+    state = dict(sessions_store[session_id])
+    note = message.strip() if message else "请审计这份项目材料，指出最关键的证据缺口。"
+    state["current_input"] = (
+        f"学生上传文件：{file.filename}\n"
+        f"补充说明：{note}\n\n"
+        "以下是系统提取的文本或结构化摘要，请不要把其中未标注的数字自动视为事实：\n"
+        f"{summary[:15000]}"
+    )
+    state["agent_mode"] = "coach"
+    try:
+        result = await app_graph.ainvoke(state)
+        add_step(run, "agent_workflow", "success", "file->extractor->critic->coach")
+    except Exception as exc:
+        add_step(run, "agent_workflow", "failed", type(exc).__name__)
+        finish_run(run, "failed", type(exc).__name__)
+        raise HTTPException(status_code=503, detail="文件已读取，但项目指导暂时不可用，请稍后重试") from exc
+    sessions_store[session_id] = result
+    save_sessions(sessions_store)
+    finish_run(run, "success")
+    return {
+        "session_id": session_id,
+        "filename": file.filename,
+        "coach_response": result["coach_response"],
+        "next_task": result["next_task"],
+        "detected_fallacies": result["detected_fallacies"],
+        "capability_scores": result["capability_scores"],
+        "current_phase": result["current_phase"],
+        "round_count": result["round_count"],
+        "run_id": run["run_id"],
+    }
+
+
+@app.post("/api/review")
+async def review(req: ReviewRequest):
+    """F3 评审反馈：量规、证据缺口、边界分类和可执行修改。"""
+    run = start_run("F3", req.test_id or "manual")
+    if len(req.project_text.strip()) < 20:
+        add_step(run, "input_validation", "failed", "project_text_too_short")
+        finish_run(run, "failed", "input_missing")
+        raise HTTPException(status_code=400, detail="评审至少需要20个字符的项目材料")
+    add_step(run, "input_validation", "success", f"project_length={len(req.project_text.strip())}")
+    try:
+        result = review_response(req.project_text, req.rubric or "创业项目基础评审")
+        add_step(run, "rubric_review", "success", f"dimensions={len(result['dimensions'])}")
+        finish_run(run, "success")
+        result["run_id"] = run["run_id"]
+        return result
+    except ValueError as exc:
+        finish_run(run, "failed", "input_missing")
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/evidence/classify")
+async def classify_evidence(req: EvidenceRequest):
+    """将项目材料拆成 F/I/H/S，并明确哪些内容仍需核验。"""
+    if not req.text.strip():
+        raise HTTPException(status_code=400, detail="请输入需要标注的材料")
+    run = start_run("evidence", "manual")
+    add_step(run, "claim_classification", "success", f"text_length={len(req.text.strip())}")
+    finish_run(run, "success")
+    return {"claims": classify_claims(req.text), "run_id": run["run_id"], "note": "自动分类仅作初筛，最终标注由项目成员负责。"}
+
+
+@app.get("/api/runs/{run_id}")
+async def get_run(run_id: str):
+    """按 run_id 定位脱敏运行记录。"""
+    import json
+    run_file = os.path.join(os.path.dirname(__file__), "logs", "runs.jsonl")
+    if not os.path.exists(run_file):
+        raise HTTPException(status_code=404, detail="运行记录不存在")
+    with open(run_file, "r", encoding="utf-8") as file:
+        for line in file:
+            if line.strip() and json.loads(line).get("run_id") == run_id:
+                return json.loads(line)
+    raise HTTPException(status_code=404, detail="运行记录不存在")
 
 
 @app.get("/api/session/{session_id}")
@@ -246,6 +402,21 @@ async def get_session(session_id: str):
         "probing_strategy": state.get("probing_strategy", ""),
         "kb_context": state.get("kb_context", {}),
     }
+
+
+@app.delete("/api/student/session/{session_id}")
+async def delete_student_session(session_id: str, req: StudentDeleteRequest):
+    """学生只能删除属于自己的项目。"""
+    if session_id not in sessions_store:
+        raise HTTPException(status_code=404, detail="项目不存在")
+    student_id = req.student_id.strip()
+    if not student_id or users_store.get(student_id) != req.password:
+        raise HTTPException(status_code=401, detail="身份验证失败")
+    if sessions_store[session_id].get("student_id") != student_id:
+        raise HTTPException(status_code=403, detail="不能删除其他人的项目")
+    del sessions_store[session_id]
+    save_sessions(sessions_store)
+    return {"message": "项目已删除", "session_id": session_id}
 
 
 # ─────────────────────────────────────────────────────────────
