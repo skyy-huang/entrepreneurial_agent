@@ -1,0 +1,1695 @@
+{
+  "label": "V2",
+  "base_url": "http://127.0.0.1:8000",
+  "started_at": "2026-09-13T23:46:44.946457",
+  "results": [
+    {
+      "id": "U1",
+      "name": "理论学习",
+      "flow": "F1",
+      "focus": "概念正确；层次清楚；正反例有效；有理解检查；不虚构引用",
+      "checks": [
+        {
+          "name": "概念命中本地知识库（非兜底）",
+          "passed": true,
+          "detail": "title=问题—解决方案匹配"
+        },
+        {
+          "name": "给出正例",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "给出反例",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "恰好3个理解检查问题",
+          "passed": true,
+          "detail": "实得 3 个"
+        },
+        {
+          "name": "说明来源边界",
+          "passed": true,
+          "detail": "本词条为课程自编的概念解释，未引用外部文献；若需写入正式材料，请自行补充可核验来源。"
+        },
+        {
+          "name": "正文未编造文献/链接",
+          "passed": true,
+          "detail": "未发现"
+        }
+      ],
+      "passed": 6,
+      "total": 6,
+      "raw": {
+        "flow": "F1",
+        "title": "问题—解决方案匹配",
+        "explanation": "它要求方案直接回应一个具体用户在具体场景中的关键问题，而不是把技术功能当成价值。匹配成立的标志是：用户能说清「我原来怎么做、现在改变了什么结果」，而不是「这个功能很先进」。",
+        "how_to_judge": [
+          "目标用户能否缩小到一个具体角色，而不是「所有大学生」这类泛称？",
+          "用户现在用什么替代方案（包括不用任何产品），该方案的不足是否有依据？",
+          "方案改变的是任务结果（更快、更省、更准），还是只增加了一个技术功能？"
+        ],
+        "common_pitfalls": [
+          "把技术能力当成用户价值：先有模型再找场景，于是问题被临时编出来。",
+          "用户范围过宽：写成「所有企业」「所有老年人」，导致任何证据都无法证伪。",
+          "用功能列表代替问题陈述：列出十个功能，却说不清用户原本卡在哪一步。"
+        ],
+        "positive_example": "面向「每学期末集中处理闲置教材的本科生」，用校内可检索的交换流程，把「在微信群反复刷屏找书、平均等待数天」缩短为按条件筛选后直接联系。用户、场景、任务、障碍、后果都具体，且可被证伪。",
+        "negative_example": "面向「所有人」，用 AI 匹配「一切闲置物品」，默认用户会因为「智能」而使用。没有说明谁在什么场景下遇到什么具体问题，也没有说明现有做法为何不足。",
+        "understanding_checks": [
+          "你的目标用户能否缩小到一个具体角色？说不出来卡在哪一步？",
+          "他们现在用什么替代方案，具体的损失（时间、金钱、风险）是什么？",
+          "你的方案改变的是任务结果，还是只是增加了一个技术功能？"
+        ],
+        "knowledge_base_hit": true,
+        "llm_enhanced": false,
+        "source_note": "本词条为课程自编的概念解释，未引用外部文献；若需写入正式材料，请自行补充可核验来源。",
+        "run_id": "run_ac2e12585433"
+      }
+    },
+    {
+      "id": "U2",
+      "name": "证据边界",
+      "flow": "F3-evidence",
+      "focus": "不把数字或模拟当事实；分类合理；提出可执行核验；不伪造链接",
+      "checks": [
+        {
+          "name": "拆出至少4条陈述",
+          "passed": true,
+          "detail": "实得 6 条"
+        },
+        {
+          "name": "无来源数字「80%」标为 H",
+          "passed": true,
+          "detail": "labels=['H', 'I', 'H', 'S', 'S', 'I']"
+        },
+        {
+          "name": "模拟内容标为 S",
+          "passed": true,
+          "detail": "labels=['H', 'I', 'H', 'S', 'S', 'I']"
+        },
+        {
+          "name": "无来源材料中不出现「事实 F」判定",
+          "passed": true,
+          "detail": "labels=['H', 'I', 'H', 'S', 'S', 'I']"
+        },
+        {
+          "name": "包含「学校支持建立教材交易平台」且未误判为 F",
+          "passed": true,
+          "detail": "该条为旧版误判为 F 的样例"
+        },
+        {
+          "name": "每条都给出核验动作",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "说明当前能否采用",
+          "passed": true,
+          "detail": ""
+        }
+      ],
+      "passed": 7,
+      "total": 7,
+      "raw": {
+        "claims": [
+          {
+            "claim": "某项目声称：①80%的大学生每学期都有闲置教材",
+            "label": "H",
+            "label_name": "假设：尚未被材料或数据支持的判断",
+            "can_use_now": "仅可作为待验证输入，不得作为结论依据",
+            "reason": "陈述包含具体数字但没有可定位来源；无法核实的数字不得进入最终结论",
+            "verification_step": "补充该数字的机构、标题、年份与链接，或改标为假设并给出估算公式"
+          },
+          {
+            "claim": "学校支持建立教材交易平台",
+            "label": "I",
+            "label_name": "推断：基于事实做出的解释，仍需验证",
+            "can_use_now": "仅可作为待验证输入，不得作为结论依据",
+            "reason": "未发现可定位来源，按保守口径降级为待核验陈述（不判为事实）",
+            "verification_step": "补充来源，或明确写为假设并给出验证方法"
+          },
+          {
+            "claim": "用户愿意支付每单5元",
+            "label": "H",
+            "label_name": "假设：尚未被材料或数据支持的判断",
+            "can_use_now": "仅可作为待验证输入，不得作为结论依据",
+            "reason": "陈述包含具体数字但没有可定位来源；无法核实的数字不得进入最终结论",
+            "verification_step": "补充该数字的机构、标题、年份与链接，或改标为假设并给出估算公式"
+          },
+          {
+            "claim": "Agent模拟用户认为操作步骤太多",
+            "label": "S",
+            "label_name": "模拟：课程/教师/Agent设定的情境，不等于真实市场证据",
+            "can_use_now": "不得作为证据；只能用于生成待验证假设",
+            "reason": "出现情境标记「模拟」，属于课程/教师/Agent 设定的模拟材料",
+            "verification_step": "把该情境转化为一条待验证假设，并设计课程内可完成的核验动作"
+          },
+          {
+            "claim": "请逐条标记为事实F、推断I、假设H或模拟S，说明当前能否采用以及下一步如何核验",
+            "label": "S",
+            "label_name": "模拟：课程/教师/Agent设定的情境，不等于真实市场证据",
+            "can_use_now": "不得作为证据；只能用于生成待验证假设",
+            "reason": "出现情境标记「模拟」，属于课程/教师/Agent 设定的模拟材料",
+            "verification_step": "把该情境转化为一条待验证假设，并设计课程内可完成的核验动作"
+          },
+          {
+            "claim": "题干没有提供任何真实来源",
+            "label": "I",
+            "label_name": "推断：基于事实做出的解释，仍需验证",
+            "can_use_now": "仅可作为待验证输入，不得作为结论依据",
+            "reason": "未发现可定位来源，按保守口径降级为待核验陈述（不判为事实）",
+            "verification_step": "补充来源，或明确写为假设并给出验证方法"
+          }
+        ],
+        "run_id": "run_b8d69bd6cda2",
+        "note": "自动分类仅作初筛，最终标注由项目成员负责。"
+      }
+    },
+    {
+      "id": "U3",
+      "name": "项目指导",
+      "flow": "F2",
+      "focus": "能分步推进；不擅自补齐事实；形成项目骨架；明确待验证项",
+      "checks": [
+        {
+          "name": "未直接生成完整商业计划书",
+          "passed": true,
+          "detail": "回复未出现计划书章节结构"
+        },
+        {
+          "name": "给出唯一的下一步任务",
+          "passed": true,
+          "detail": "next_task 长度 233"
+        },
+        {
+          "name": "围绕用户/场景/问题推进",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "标注证据类型 F/I/H/S",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "不擅自补齐事实（检索为空时如实说明）",
+          "passed": true,
+          "detail": ""
+        }
+      ],
+      "passed": 5,
+      "total": 5,
+      "raw": {
+        "session_id": "644c3a16",
+        "coach_response": "⚠️ 当前运行于本地确定性模式（原因：LLM 调用失败（APIStatusError））。以下反馈来自规则引擎，未调用大模型。\n\n1. **Project Stage**（项目阶段）：idea\n\n2. **Current Diagnosis**（当前诊断）：\n客户-价值主张错位：目标客户或价值主张缺失/模糊\n\n3. **Evidence Used**（诊断依据）：\n- 目标客户：未提及\n- 核心痛点：未提及\n- 价值主张：未提及\n- 本次未命中案例库对标，以上判断仅基于你提供的内容。\n\n4. **Impact if Unfixed**（不修复后果）：\n缺少可核验的目标用户与痛点证据时，后续的方案、定价和渠道都建立在假设之上，无法判断问题是否真实存在。\n\n5. **Next Task**（下一步任务）：\n**Task description**：补齐以下尚未提及的关键信息：目标客户、价值主张、核心痛点。\n**Template/Guideline**：\n1. 用一句话写清「哪类用户在什么场景下遇到什么问题」；\n2. 对每一条结论标注证据类型：事实 F（附来源）／推断 I／假设 H／模拟 S；\n3. 没有来源的数字一律标为 H，并写出你打算怎么核验它。\n**Acceptance Criteria**：目标用户可识别、至少一条结论标注了证据类型、无来源数字已标为假设。\n\n⚠️ AI辅助分析，仅供参考，请结合实际情况转化",
+        "next_task": "**Task description**：补齐以下尚未提及的关键信息：目标客户、价值主张、核心痛点。\n**Template/Guideline**：\n1. 用一句话写清「哪类用户在什么场景下遇到什么问题」；\n2. 对每一条结论标注证据类型：事实 F（附来源）／推断 I／假设 H／模拟 S；\n3. 没有来源的数字一律标为 H，并写出你打算怎么核验它。\n**Acceptance Criteria**：目标用户可识别、至少一条结论标注了证据类型、无来源数字已标为假设。",
+        "thought_process": "本地模式：先运行确定性规则引擎识别缺口，再围绕最高优先级缺口生成唯一行动任务。",
+        "detected_fallacies": [
+          {
+            "rule_id": "H1",
+            "name": "客户-价值主张错位",
+            "description": "客户-价值主张错位：目标客户或价值主张缺失/模糊",
+            "evidence": "字段 'target_customer' 未提及; 字段 'value_proposition' 未提及; 字段 'core_pain_point' 未提及",
+            "severity": "high",
+            "confidence": 1.0,
+            "impact": "客户无购买动机，商业模式无法成立",
+            "fix_task": "访谈 ≥5 位真实目标客户，记录其最高频痛点，与现有价值主张做对比验证",
+            "source": "rule_engine"
+          },
+          {
+            "rule_id": "H2",
+            "name": "渠道不可达",
+            "description": "渠道不可达：获客渠道未确定或依赖不可控渠道",
+            "evidence": "字段 'key_channels' 未提及",
+            "severity": "high",
+            "confidence": 1.0,
+            "impact": "无论产品多好，客户无法被找到，获客成本无限高",
+            "fix_task": "列出目标客户最高频的信息获取渠道（前3个），并验证你是否能在这些渠道投放",
+            "source": "rule_engine"
+          },
+          {
+            "rule_id": "H3",
+            "name": "定价无支付意愿证据",
+            "description": "定价无支付意愿证据：定价未确定或缺乏验证",
+            "evidence": "字段 'price_point' 未提及",
+            "severity": "high",
+            "confidence": 1.0,
+            "impact": "上线后转化率极低，定价策略需要大幅调整",
+            "fix_task": "设计 Landing Page 测试或报价访谈，获取 ≥30 份用户真实报价反馈",
+            "source": "rule_engine"
+          },
+          {
+            "rule_id": "H5",
+            "name": "需求证据不足",
+            "description": "需求证据不足：痛点判断基于臆测而非调研",
+            "evidence": "字段 'core_pain_point' 未提及",
+            "severity": "high",
+            "confidence": 1.0,
+            "impact": "整个项目建立在未经验证的假设上，一旦需求不真实则全盘皆输",
+            "fix_task": "完成 ≥10 次深度用户访谈，记录原话，输出亲和图（Affinity Map）",
+            "source": "rule_engine"
+          },
+          {
+            "rule_id": "H8",
+            "name": "单位经济不成立",
+            "description": "单位经济不成立：收入模式/成本/定价未明确",
+            "evidence": "字段 'revenue_model' 未提及; 字段 'cost_structure' 未提及; 字段 'price_point' 未提及",
+            "severity": "high",
+            "confidence": 1.0,
+            "impact": "规模越大亏损越多，商业模式在数学上不成立",
+            "fix_task": "逐项列出单笔交易的收入与变动成本，计算真实毛利率，并估算 LTV/CAC 比值",
+            "source": "rule_engine"
+          },
+          {
+            "rule_id": "H10",
+            "name": "里程碑不可交付",
+            "description": "里程碑不可交付：团队或技术能力不明确",
+            "evidence": "字段 'team_description' 未提及",
+            "severity": "high",
+            "confidence": 0.5,
+            "impact": "项目推进失速，融资节点无法兑现，信用受损",
+            "fix_task": "重新拆分里程碑：每个节点必须注明负责人、所需资源和验收标准",
+            "source": "rule_engine"
+          },
+          {
+            "rule_id": "H11",
+            "name": "合规/伦理缺口",
+            "description": "合规/伦理缺口：涉及敏感领域但未提及合规",
+            "evidence": "检测到触发关键词: 数据",
+            "severity": "high",
+            "confidence": 0.65,
+            "impact": "强制下架或法律追责，企业声誉受损",
+            "fix_task": "列出业务所有可能触碰的法规清单，逐条标注合规状态和解决方案",
+            "source": "rule_engine"
+          },
+          {
+            "rule_id": "H12",
+            "name": "技术路线与资源不匹配",
+            "description": "技术路线与资源不匹配：技术或团队信息缺失",
+            "evidence": "字段 'team_description' 未提及",
+            "severity": "high",
+            "confidence": 0.5,
+            "impact": "技术债务累积，关键节点无法交付，项目烂尾",
+            "fix_task": "识别技术栈中最高风险点，制定 POC 验证计划，并评估是否需要引入外部技术顾问",
+            "source": "rule_engine"
+          }
+        ],
+        "capability_scores": {
+          "pain_point_discovery": 5.0,
+          "solution_planning": 5.0,
+          "business_modeling": 5.0,
+          "resource_leverage": 5.0,
+          "pitch_expression": 5.0
+        },
+        "current_phase": "value_probe",
+        "round_count": 1,
+        "hypergraph_summary": "超图暂无节点（信息尚未提取）",
+        "probing_strategy": "evidence_challenge",
+        "retrieved_hyperedge_types": [],
+        "rule_engine_result": {
+          "triggered_rules": [
+            "H1",
+            "H2",
+            "H3",
+            "H5",
+            "H8",
+            "H10",
+            "H11",
+            "H12"
+          ],
+          "gap_fields": [
+            "target_customer",
+            "value_proposition",
+            "core_pain_point",
+            "key_channels",
+            "price_point",
+            "revenue_model",
+            "cost_structure",
+            "team_description"
+          ],
+          "evidence_coverage": 0.11,
+          "critical_missing_evidence": [
+            "Survey",
+            "Interview Quotes",
+            "Behavioral Data",
+            "Technical Roadmap",
+            "Resource Match"
+          ],
+          "phase1_count": 8,
+          "phase2_count": 0
+        },
+        "kb_context": {
+          "retrieved_nodes": [
+            {
+              "id": "AI辅助感知网络设计",
+              "desc": "基于DIC技术获取全局应变数据，利用K-means聚类算法优化高拉伸性、高灵敏度柔性传感阵列的布设",
+              "source": ""
+            },
+            {
+              "id": "K-means聚类算法",
+              "desc": "用于分析胸鳍应变场，智能优化传感器布局，构建高效感知网络",
+              "source": ""
+            },
+            {
+              "id": "虚拟仿真平台（浩澜OmniAqua）",
+              "desc": "基于Unreal Engine 5（UE5）构建高保真水下仿真平台，模拟逼真的物理环境与传感器特性，形成“虚拟驱动现实”的闭环开发与测试生态，降低算法开发与迭代的成本和风险。",
+              "source": ""
+            },
+            {
+              "id": "智能路径规划与调度平台",
+              "desc": "基于Next.js+React的AI驱动平台，实现农机最优路径协同作业",
+              "source": ""
+            },
+            {
+              "id": "Greta Oto智能纳米光学胶囊内窥镜",
+              "desc": "一款融合纳米技术、人工智能和偏振成像技术的微型胶囊内窥镜，尺寸5mm×12mm，用于消化道无创诊断和早期筛查。",
+              "source": ""
+            }
+          ],
+          "retrieved_master_edges": [
+            {
+              "source": "AI辅助感知网络设计",
+              "target": "K-means聚类算法",
+              "relation": "依赖于",
+              "source_file": ""
+            },
+            {
+              "source": "AI辅助感知网络设计",
+              "target": "数字图像相关技术(DIC)",
+              "relation": "依赖于",
+              "source_file": ""
+            },
+            {
+              "source": "AI辅助感知网络设计",
+              "target": "柔性传感阵列",
+              "relation": "依赖于",
+              "source_file": ""
+            },
+            {
+              "source": "三位一体架构",
+              "target": "AI辅助感知网络设计",
+              "relation": "包含",
+              "source_file": ""
+            },
+            {
+              "source": "虚拟仿真平台（浩澜OmniAqua）",
+              "target": "水下数据采集成本高且标注困难",
+              "relation": "解决",
+              "source_file": ""
+            },
+            {
+              "source": "虚拟仿真平台（浩澜OmniAqua）",
+              "target": "虚实迁移技术",
+              "relation": "依赖于",
+              "source_file": ""
+            },
+            {
+              "source": "软件授权与SDK",
+              "target": "虚拟仿真平台（浩澜OmniAqua）",
+              "relation": "基于",
+              "source_file": ""
+            },
+            {
+              "source": "智能路径规划与调度平台",
+              "target": "劳动力短缺与老龄化",
+              "relation": "缓解",
+              "source_file": ""
+            },
+            {
+              "source": "智能路径规划与调度平台",
+              "target": "SaaS服务订阅",
+              "relation": "通过",
+              "source_file": ""
+            },
+            {
+              "source": "Greta Oto智能纳米光学胶囊内窥镜",
+              "target": "消化道疾病患者/高危人群",
+              "relation": "服务于",
+              "source_file": ""
+            },
+            {
+              "source": "Greta Oto智能纳米光学胶囊内窥镜",
+              "target": "医院/消化科",
+              "relation": "销售给",
+              "source_file": ""
+            },
+            {
+              "source": "Greta Oto智能纳米光学胶囊内窥镜",
+              "target": "门诊/筛查中心",
+              "relation": "应用于",
+              "source_file": ""
+            },
+            {
+              "source": "Greta Oto智能纳米光学胶囊内窥镜",
+              "target": "科研机构",
+              "relation": "应用于",
+              "source_file": ""
+            },
+            {
+              "source": "Greta Oto智能纳米光学胶囊内窥镜",
+              "target": "医疗资源匮乏地区",
+              "relation": "服务于",
+              "source_file": ""
+            },
+            {
+              "source": "Greta Oto智能纳米光学胶囊内窥镜",
+              "target": "传统内窥镜检查不适与低普及率",
+              "relation": "解决",
+              "source_file": ""
+            },
+            {
+              "source": "Greta Oto智能纳米光学胶囊内窥镜",
+              "target": "现有胶囊内窥镜体积大、舒适度差",
+              "relation": "解决",
+              "source_file": ""
+            },
+            {
+              "source": "Greta Oto智能纳米光学胶囊内窥镜",
+              "target": "消化道疾病早期筛查需求未被满足",
+              "relation": "解决",
+              "source_file": ""
+            },
+            {
+              "source": "Greta Oto智能纳米光学胶囊内窥镜",
+              "target": "纳米光学技术（超构透镜）",
+              "relation": "依赖于",
+              "source_file": ""
+            },
+            {
+              "source": "Greta Oto智能纳米光学胶囊内窥镜",
+              "target": "偏振成像技术",
+              "relation": "依赖于",
+              "source_file": ""
+            },
+            {
+              "source": "Greta Oto智能纳米光学胶囊内窥镜",
+              "target": "MedMamba AI诊断模型",
+              "relation": "集成",
+              "source_file": ""
+            },
+            {
+              "source": "Greta Oto智能纳米光学胶囊内窥镜",
+              "target": "极致微型化",
+              "relation": "具备",
+              "source_file": ""
+            },
+            {
+              "source": "Greta Oto智能纳米光学胶囊内窥镜",
+              "target": "高性能成像",
+              "relation": "具备",
+              "source_file": ""
+            },
+            {
+              "source": "Greta Oto智能纳米光学胶囊内窥镜",
+              "target": "实时AI辅助诊断",
+              "relation": "具备",
+              "source_file": ""
+            },
+            {
+              "source": "Greta Oto智能纳米光学胶囊内窥镜",
+              "target": "早期检测与筛查",
+              "relation": "致力于",
+              "source_file": ""
+            },
+            {
+              "source": "Greta Oto智能纳米光学胶囊内窥镜",
+              "target": "低成本",
+              "relation": "具备",
+              "source_file": ""
+            },
+            {
+              "source": "Greta Oto智能纳米光学胶囊内窥镜",
+              "target": "中国内窥镜市场",
+              "relation": "进入",
+              "source_file": ""
+            },
+            {
+              "source": "设备直销+持续服务",
+              "target": "Greta Oto智能纳米光学胶囊内窥镜",
+              "relation": "基于",
+              "source_file": ""
+            },
+            {
+              "source": "经销商合作",
+              "target": "Greta Oto智能纳米光学胶囊内窥镜",
+              "relation": "推广",
+              "source_file": ""
+            },
+            {
+              "source": "Erik Edilson (COO)",
+              "target": "Greta Oto智能纳米光学胶囊内窥镜",
+              "relation": "负责电子系统",
+              "source_file": ""
+            },
+            {
+              "source": "Wong Guoxing (电子与硬件工程师)",
+              "target": "Greta Oto智能纳米光学胶囊内窥镜",
+              "relation": "负责硬件优化",
+              "source_file": ""
+            }
+          ],
+          "retrieved_hyperedges": [],
+          "similar_failures": [
+            {
+              "id": "个性化课程生成与交付闭环",
+              "nodes": [
+                "教授智能体 (Professor Agent)",
+                "研究智能体 (Research Agent)",
+                "幻灯片智能体 (Slide Agent)",
+                "脚本智能体 (Script Agent)",
+                "语音合成智能体 (Speech Agent)",
+                "个性化记忆与推荐"
+              ],
+              "desc": "这是一个协同工作流：教授智能体作为总协调者，接收学习者输入后，通过Swarm将研究任务分配给研究智能体进行深度检索；研究结果传递给幻灯片智能体生成结构化课件，同时脚本智能体根据指定风格撰写讲稿；语音合成智能体将讲稿转化为语音；整个过程由个性化记忆模块提供历史数据支持以优化内容。这些智能体缺一不可，共同实现了从需求理解到个性化课程内容动态生成与交付的完整闭环。",
+              "source": "477178-LectūraAgents-项目策划书-42019064.pdf"
+            },
+            {
+              "id": "应变感知-智能反演-状态反馈闭环",
+              "nodes": [
+                "柔性传感阵列",
+                "K-means聚类算法",
+                "BP神经网络",
+                "AI智能变形反馈系统"
+              ],
+              "desc": "柔性传感阵列提供原始应变信号，K-means算法优化其布局以提升信号质量与效率，BP神经网络则建立从应变到三维形变的复杂非线性映射模型。三者协同工作，实现了在非视觉、复杂水下环境下对航行器自身运动状态的实时、精确感知与反馈，是提升装备自主性与环境适应性的核心技术组合。",
+              "source": "528229-深海幽灵-面向海洋强_无人航行器-项目策划书-02addcc8.pdf"
+            },
+            {
+              "id": "纳米光学-AI诊断-微型化闭环",
+              "nodes": [
+                "纳米光学技术（超构透镜）",
+                "偏振成像技术",
+                "MedMamba AI诊断模型",
+                "极致微型化",
+                "高性能成像"
+              ],
+              "desc": "纳米光学技术（超构透镜）是实现设备极致微型化（5mm×12mm）和高性能成像（170°视角，300lp/mm分辨率）的物理基础；偏振成像技术在此基础上提供了独特的组织分化识别能力，生成更丰富的诊断信息；MedMamba AI模型则对这些高质量的图像数据进行实时、高精度分析。这三项核心技术相互依赖、协同增强：微型化扩大了适用人群和筛查场景，高性能与偏振成像确保了数据质量，AI则最大化数据价值，共同构成了产品在成像质量、诊断精度和患者体验上的核心护城河，缺一不可。",
+              "source": "510668-智能纳米光学偏振内窥镜胶囊-项目策划书-91bb4b65.pdf"
+            }
+          ]
+        },
+        "degraded": true,
+        "degraded_reason": "LLM 调用失败（APIStatusError）",
+        "run_id": "run_726fa4828628"
+      }
+    },
+    {
+      "id": "U4",
+      "name": "指导修订（需先执行 U3 建立上下文）",
+      "flow": "F2",
+      "focus": "识别受影响模块；不整体重写；保留模拟标识；说明修改理由",
+      "checks": [
+        {
+          "name": "识别受影响模块（场景/替代方案/价值主张/风险）",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "保留模拟标识，不把教师情境当真实证据",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "说明修订理由",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "未整体重写（输出长度受控）",
+          "passed": true,
+          "detail": "回复长度 775"
+        }
+      ],
+      "passed": 4,
+      "total": 4,
+      "session_id": "644c3a16",
+      "raw": {
+        "session_id": "644c3a16",
+        "coach_response": "⚠️ 当前运行于本地确定性模式（原因：LLM 调用失败（APIStatusError））。以下反馈来自规则引擎，未调用大模型。\n\n1. **Project Stage**（项目阶段）：项目骨架已有，本次为增量修订。\n\n2. **Current Diagnosis**（当前诊断）：\n新信息只影响部分模块，应做定点修订而不是整体重写。受影响模块：用户场景、替代方案、价值主张、风险与边界；不受影响、应保持原样的模块：定价与成本、渠道与触达。\n\n3. **Evidence Used**（诊断依据）：\n- 你本次补充的内容属于教师提供的模拟情境，按证据口径标记为 **模拟 S**。\n- 模拟 S 不能作为真实市场证据，只能用于生成待验证假设。\n- 本次未命中案例库对标，以上判断仅基于你提供的内容。\n\n4. **Impact if Unfixed**（不修复后果）：\n若把模拟情境当作真实证据写入材料，或借修订之名整体重写，会使材料与原始版本无法对照，评审时无法说明修改理由，也会削弱后续验证的可追溯性。\n\n5. **Next Task**（下一步任务）：\n**Task description**：只改写受影响的 用户场景、替代方案、价值主张、风险与边界，其余模块保持原文不变。\n**Template/Guideline**：\n1. 逐条标明新增内容是「模拟 S」还是「事实 F」——教师提供的模拟情境一律标 S；\n2. 对每个被改写的模块，写一行「原文 → 修改后 → 修改理由」；\n3. 没有被新信息影响的模块，明确写「本次不修改」。\n**Acceptance Criteria**：受影响的模块已更新并标注证据类型，未受影响模块未被改写，每条修改都能说明理由，模拟材料未被表述为真实市场证据。\n\n⚠️ AI辅助分析，仅供参考，请结合实际情况转化",
+        "next_task": "**Task description**：只改写受影响的 用户场景、替代方案、价值主张、风险与边界，其余模块保持原文不变。\n**Template/Guideline**：\n1. 逐条标明新增内容是「模拟 S」还是「事实 F」——教师提供的模拟情境一律标 S；\n2. 对每个被改写的模块，写一行「原文 → 修改后 → 修改理由」；\n3. 没有被新信息影响的模块，明确写「本次不修改」。\n**Acceptance Criteria**：受影响的模块已更新并标注证据类型，未受影响模块未被改写，每条修改都能说明理由，模拟材料未被表述为真实市场证据。",
+        "thought_process": "本地模式：识别为修订类任务，按模块关键词定位受影响范围，输出定点修订指令并保留模拟标识。",
+        "detected_fallacies": [
+          {
+            "rule_id": "H1",
+            "name": "客户-价值主张错位",
+            "description": "客户-价值主张错位：目标客户或价值主张缺失/模糊",
+            "evidence": "字段 'target_customer' 未提及; 字段 'value_proposition' 未提及; 字段 'core_pain_point' 未提及",
+            "severity": "high",
+            "confidence": 1.0,
+            "impact": "客户无购买动机，商业模式无法成立",
+            "fix_task": "访谈 ≥5 位真实目标客户，记录其最高频痛点，与现有价值主张做对比验证",
+            "source": "rule_engine"
+          },
+          {
+            "rule_id": "H2",
+            "name": "渠道不可达",
+            "description": "渠道不可达：获客渠道未确定或依赖不可控渠道",
+            "evidence": "字段 'key_channels' 未提及",
+            "severity": "high",
+            "confidence": 1.0,
+            "impact": "无论产品多好，客户无法被找到，获客成本无限高",
+            "fix_task": "列出目标客户最高频的信息获取渠道（前3个），并验证你是否能在这些渠道投放",
+            "source": "rule_engine"
+          },
+          {
+            "rule_id": "H3",
+            "name": "定价无支付意愿证据",
+            "description": "定价无支付意愿证据：定价未确定或缺乏验证",
+            "evidence": "字段 'price_point' 未提及",
+            "severity": "high",
+            "confidence": 1.0,
+            "impact": "上线后转化率极低，定价策略需要大幅调整",
+            "fix_task": "设计 Landing Page 测试或报价访谈，获取 ≥30 份用户真实报价反馈",
+            "source": "rule_engine"
+          },
+          {
+            "rule_id": "H5",
+            "name": "需求证据不足",
+            "description": "需求证据不足：痛点判断基于臆测而非调研",
+            "evidence": "字段 'core_pain_point' 未提及",
+            "severity": "high",
+            "confidence": 1.0,
+            "impact": "整个项目建立在未经验证的假设上，一旦需求不真实则全盘皆输",
+            "fix_task": "完成 ≥10 次深度用户访谈，记录原话，输出亲和图（Affinity Map）",
+            "source": "rule_engine"
+          },
+          {
+            "rule_id": "H8",
+            "name": "单位经济不成立",
+            "description": "单位经济不成立：收入模式/成本/定价未明确",
+            "evidence": "字段 'revenue_model' 未提及; 字段 'cost_structure' 未提及; 字段 'price_point' 未提及",
+            "severity": "high",
+            "confidence": 1.0,
+            "impact": "规模越大亏损越多，商业模式在数学上不成立",
+            "fix_task": "逐项列出单笔交易的收入与变动成本，计算真实毛利率，并估算 LTV/CAC 比值",
+            "source": "rule_engine"
+          },
+          {
+            "rule_id": "H10",
+            "name": "里程碑不可交付",
+            "description": "里程碑不可交付：团队或技术能力不明确",
+            "evidence": "字段 'team_description' 未提及",
+            "severity": "high",
+            "confidence": 0.5,
+            "impact": "项目推进失速，融资节点无法兑现，信用受损",
+            "fix_task": "重新拆分里程碑：每个节点必须注明负责人、所需资源和验收标准",
+            "source": "rule_engine"
+          },
+          {
+            "rule_id": "H11",
+            "name": "合规/伦理缺口",
+            "description": "合规/伦理缺口：涉及敏感领域但未提及合规",
+            "evidence": "检测到触发关键词: 数据, AI",
+            "severity": "high",
+            "confidence": 0.8,
+            "impact": "强制下架或法律追责，企业声誉受损",
+            "fix_task": "列出业务所有可能触碰的法规清单，逐条标注合规状态和解决方案",
+            "source": "rule_engine"
+          },
+          {
+            "rule_id": "H12",
+            "name": "技术路线与资源不匹配",
+            "description": "技术路线与资源不匹配：技术或团队信息缺失",
+            "evidence": "字段 'team_description' 未提及",
+            "severity": "high",
+            "confidence": 0.5,
+            "impact": "技术债务累积，关键节点无法交付，项目烂尾",
+            "fix_task": "识别技术栈中最高风险点，制定 POC 验证计划，并评估是否需要引入外部技术顾问",
+            "source": "rule_engine"
+          }
+        ],
+        "capability_scores": {
+          "pain_point_discovery": 5.0,
+          "solution_planning": 5.0,
+          "business_modeling": 5.0,
+          "resource_leverage": 5.0,
+          "pitch_expression": 5.0
+        },
+        "current_phase": "value_probe",
+        "round_count": 2,
+        "hypergraph_summary": "超图暂无节点（信息尚未提取）",
+        "probing_strategy": "evidence_challenge",
+        "retrieved_hyperedge_types": [],
+        "rule_engine_result": {
+          "triggered_rules": [
+            "H1",
+            "H2",
+            "H3",
+            "H5",
+            "H8",
+            "H10",
+            "H11",
+            "H12"
+          ],
+          "gap_fields": [
+            "target_customer",
+            "value_proposition",
+            "core_pain_point",
+            "key_channels",
+            "price_point",
+            "revenue_model",
+            "cost_structure",
+            "team_description"
+          ],
+          "evidence_coverage": 0.11,
+          "critical_missing_evidence": [
+            "Survey",
+            "Interview Quotes",
+            "Behavioral Data",
+            "Technical Roadmap",
+            "Resource Match"
+          ],
+          "phase1_count": 8,
+          "phase2_count": 0
+        },
+        "kb_context": {
+          "retrieved_nodes": [
+            {
+              "id": "AI辅助感知网络设计",
+              "desc": "基于DIC技术获取全局应变数据，利用K-means聚类算法优化高拉伸性、高灵敏度柔性传感阵列的布设",
+              "source": ""
+            },
+            {
+              "id": "K-means聚类算法",
+              "desc": "用于分析胸鳍应变场，智能优化传感器布局，构建高效感知网络",
+              "source": ""
+            },
+            {
+              "id": "虚拟仿真平台（浩澜OmniAqua）",
+              "desc": "基于Unreal Engine 5（UE5）构建高保真水下仿真平台，模拟逼真的物理环境与传感器特性，形成“虚拟驱动现实”的闭环开发与测试生态，降低算法开发与迭代的成本和风险。",
+              "source": ""
+            },
+            {
+              "id": "智能路径规划与调度平台",
+              "desc": "基于Next.js+React的AI驱动平台，实现农机最优路径协同作业",
+              "source": ""
+            },
+            {
+              "id": "Greta Oto智能纳米光学胶囊内窥镜",
+              "desc": "一款融合纳米技术、人工智能和偏振成像技术的微型胶囊内窥镜，尺寸5mm×12mm，用于消化道无创诊断和早期筛查。",
+              "source": ""
+            }
+          ],
+          "retrieved_master_edges": [
+            {
+              "source": "AI辅助感知网络设计",
+              "target": "K-means聚类算法",
+              "relation": "依赖于",
+              "source_file": ""
+            },
+            {
+              "source": "AI辅助感知网络设计",
+              "target": "数字图像相关技术(DIC)",
+              "relation": "依赖于",
+              "source_file": ""
+            },
+            {
+              "source": "AI辅助感知网络设计",
+              "target": "柔性传感阵列",
+              "relation": "依赖于",
+              "source_file": ""
+            },
+            {
+              "source": "三位一体架构",
+              "target": "AI辅助感知网络设计",
+              "relation": "包含",
+              "source_file": ""
+            },
+            {
+              "source": "虚拟仿真平台（浩澜OmniAqua）",
+              "target": "水下数据采集成本高且标注困难",
+              "relation": "解决",
+              "source_file": ""
+            },
+            {
+              "source": "虚拟仿真平台（浩澜OmniAqua）",
+              "target": "虚实迁移技术",
+              "relation": "依赖于",
+              "source_file": ""
+            },
+            {
+              "source": "软件授权与SDK",
+              "target": "虚拟仿真平台（浩澜OmniAqua）",
+              "relation": "基于",
+              "source_file": ""
+            },
+            {
+              "source": "智能路径规划与调度平台",
+              "target": "劳动力短缺与老龄化",
+              "relation": "缓解",
+              "source_file": ""
+            },
+            {
+              "source": "智能路径规划与调度平台",
+              "target": "SaaS服务订阅",
+              "relation": "通过",
+              "source_file": ""
+            },
+            {
+              "source": "Greta Oto智能纳米光学胶囊内窥镜",
+              "target": "消化道疾病患者/高危人群",
+              "relation": "服务于",
+              "source_file": ""
+            },
+            {
+              "source": "Greta Oto智能纳米光学胶囊内窥镜",
+              "target": "医院/消化科",
+              "relation": "销售给",
+              "source_file": ""
+            },
+            {
+              "source": "Greta Oto智能纳米光学胶囊内窥镜",
+              "target": "门诊/筛查中心",
+              "relation": "应用于",
+              "source_file": ""
+            },
+            {
+              "source": "Greta Oto智能纳米光学胶囊内窥镜",
+              "target": "科研机构",
+              "relation": "应用于",
+              "source_file": ""
+            },
+            {
+              "source": "Greta Oto智能纳米光学胶囊内窥镜",
+              "target": "医疗资源匮乏地区",
+              "relation": "服务于",
+              "source_file": ""
+            },
+            {
+              "source": "Greta Oto智能纳米光学胶囊内窥镜",
+              "target": "传统内窥镜检查不适与低普及率",
+              "relation": "解决",
+              "source_file": ""
+            },
+            {
+              "source": "Greta Oto智能纳米光学胶囊内窥镜",
+              "target": "现有胶囊内窥镜体积大、舒适度差",
+              "relation": "解决",
+              "source_file": ""
+            },
+            {
+              "source": "Greta Oto智能纳米光学胶囊内窥镜",
+              "target": "消化道疾病早期筛查需求未被满足",
+              "relation": "解决",
+              "source_file": ""
+            },
+            {
+              "source": "Greta Oto智能纳米光学胶囊内窥镜",
+              "target": "纳米光学技术（超构透镜）",
+              "relation": "依赖于",
+              "source_file": ""
+            },
+            {
+              "source": "Greta Oto智能纳米光学胶囊内窥镜",
+              "target": "偏振成像技术",
+              "relation": "依赖于",
+              "source_file": ""
+            },
+            {
+              "source": "Greta Oto智能纳米光学胶囊内窥镜",
+              "target": "MedMamba AI诊断模型",
+              "relation": "集成",
+              "source_file": ""
+            },
+            {
+              "source": "Greta Oto智能纳米光学胶囊内窥镜",
+              "target": "极致微型化",
+              "relation": "具备",
+              "source_file": ""
+            },
+            {
+              "source": "Greta Oto智能纳米光学胶囊内窥镜",
+              "target": "高性能成像",
+              "relation": "具备",
+              "source_file": ""
+            },
+            {
+              "source": "Greta Oto智能纳米光学胶囊内窥镜",
+              "target": "实时AI辅助诊断",
+              "relation": "具备",
+              "source_file": ""
+            },
+            {
+              "source": "Greta Oto智能纳米光学胶囊内窥镜",
+              "target": "早期检测与筛查",
+              "relation": "致力于",
+              "source_file": ""
+            },
+            {
+              "source": "Greta Oto智能纳米光学胶囊内窥镜",
+              "target": "低成本",
+              "relation": "具备",
+              "source_file": ""
+            },
+            {
+              "source": "Greta Oto智能纳米光学胶囊内窥镜",
+              "target": "中国内窥镜市场",
+              "relation": "进入",
+              "source_file": ""
+            },
+            {
+              "source": "设备直销+持续服务",
+              "target": "Greta Oto智能纳米光学胶囊内窥镜",
+              "relation": "基于",
+              "source_file": ""
+            },
+            {
+              "source": "经销商合作",
+              "target": "Greta Oto智能纳米光学胶囊内窥镜",
+              "relation": "推广",
+              "source_file": ""
+            },
+            {
+              "source": "Erik Edilson (COO)",
+              "target": "Greta Oto智能纳米光学胶囊内窥镜",
+              "relation": "负责电子系统",
+              "source_file": ""
+            },
+            {
+              "source": "Wong Guoxing (电子与硬件工程师)",
+              "target": "Greta Oto智能纳米光学胶囊内窥镜",
+              "relation": "负责硬件优化",
+              "source_file": ""
+            }
+          ],
+          "retrieved_hyperedges": [],
+          "similar_failures": [
+            {
+              "id": "个性化课程生成与交付闭环",
+              "nodes": [
+                "教授智能体 (Professor Agent)",
+                "研究智能体 (Research Agent)",
+                "幻灯片智能体 (Slide Agent)",
+                "脚本智能体 (Script Agent)",
+                "语音合成智能体 (Speech Agent)",
+                "个性化记忆与推荐"
+              ],
+              "desc": "这是一个协同工作流：教授智能体作为总协调者，接收学习者输入后，通过Swarm将研究任务分配给研究智能体进行深度检索；研究结果传递给幻灯片智能体生成结构化课件，同时脚本智能体根据指定风格撰写讲稿；语音合成智能体将讲稿转化为语音；整个过程由个性化记忆模块提供历史数据支持以优化内容。这些智能体缺一不可，共同实现了从需求理解到个性化课程内容动态生成与交付的完整闭环。",
+              "source": "477178-LectūraAgents-项目策划书-42019064.pdf"
+            },
+            {
+              "id": "应变感知-智能反演-状态反馈闭环",
+              "nodes": [
+                "柔性传感阵列",
+                "K-means聚类算法",
+                "BP神经网络",
+                "AI智能变形反馈系统"
+              ],
+              "desc": "柔性传感阵列提供原始应变信号，K-means算法优化其布局以提升信号质量与效率，BP神经网络则建立从应变到三维形变的复杂非线性映射模型。三者协同工作，实现了在非视觉、复杂水下环境下对航行器自身运动状态的实时、精确感知与反馈，是提升装备自主性与环境适应性的核心技术组合。",
+              "source": "528229-深海幽灵-面向海洋强_无人航行器-项目策划书-02addcc8.pdf"
+            },
+            {
+              "id": "纳米光学-AI诊断-微型化闭环",
+              "nodes": [
+                "纳米光学技术（超构透镜）",
+                "偏振成像技术",
+                "MedMamba AI诊断模型",
+                "极致微型化",
+                "高性能成像"
+              ],
+              "desc": "纳米光学技术（超构透镜）是实现设备极致微型化（5mm×12mm）和高性能成像（170°视角，300lp/mm分辨率）的物理基础；偏振成像技术在此基础上提供了独特的组织分化识别能力，生成更丰富的诊断信息；MedMamba AI模型则对这些高质量的图像数据进行实时、高精度分析。这三项核心技术相互依赖、协同增强：微型化扩大了适用人群和筛查场景，高性能与偏振成像确保了数据质量，AI则最大化数据价值，共同构成了产品在成像质量、诊断精度和患者体验上的核心护城河，缺一不可。",
+              "source": "510668-智能纳米光学偏振内窥镜胶囊-项目策划书-91bb4b65.pdf"
+            }
+          ]
+        },
+        "degraded": true,
+        "degraded_reason": "LLM 调用失败（APIStatusError）",
+        "run_id": "run_6d8dad87e762"
+      }
+    },
+    {
+      "id": "U5",
+      "name": "项目评审",
+      "flow": "F3",
+      "focus": "标准明确；识别虚假/缺失证据；意见具体；评分或结论前后一致",
+      "checks": [
+        {
+          "name": "输出结构化分维评价",
+          "passed": true,
+          "detail": "实得 5 个维度"
+        },
+        {
+          "name": "识别无来源证据（证据缺口非空）",
+          "passed": true,
+          "detail": "实得 15 条缺口"
+        },
+        {
+          "name": "识别「使用AI」不能作为创新点",
+          "passed": true,
+          "detail": "integrity_risks=2 条"
+        },
+        {
+          "name": "评分未虚高（无来源项目 < 50/100）",
+          "passed": true,
+          "detail": "实得 23.8/100"
+        },
+        {
+          "name": "结论与证据一致（给出质量等级）",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "意见可执行（含修改建议）",
+          "passed": true,
+          "detail": ""
+        }
+      ],
+      "passed": 6,
+      "total": 6,
+      "raw": {
+        "flow": "F3",
+        "rubric": "创业项目基础评审",
+        "overall_score": 23.8,
+        "overall_5": 1.21,
+        "quality_level": {
+          "level": 1,
+          "name": "严重缺陷",
+          "anchor": "多项关键错误；证据不可追溯；需要人工重做大部分内容"
+        },
+        "dimensions": [
+          {
+            "dimension": "社会价值",
+            "max": 20,
+            "score": 5.2,
+            "score_5": 1.3,
+            "criterion": "问题重要性、受益对象、公共/产业价值与潜在负面影响",
+            "status": "部分具备",
+            "basis": "已具备：明确受益对象",
+            "missing": [
+              "具体场景",
+              "问题重要性有依据",
+              "说明负面影响或边界"
+            ],
+            "cap_reason": "全篇未发现任何可定位来源，按证据门槛限制本维度得分上限"
+          },
+          {
+            "dimension": "实践/证据过程",
+            "max": 20,
+            "score": 1.0,
+            "score_5": 0.25,
+            "criterion": "事实依据、模拟标注、迭代过程、关键假设与验证方案",
+            "status": "证据缺口",
+            "basis": "已具备：无",
+            "missing": [
+              "列出可定位来源",
+              "标注事实/假设边界",
+              "说明关键假设与验证方法",
+              "承认证据缺口或局限"
+            ],
+            "cap_reason": "全篇未发现任何可定位来源，按证据门槛限制本维度得分上限"
+          },
+          {
+            "dimension": "创新意义",
+            "max": 20,
+            "score": 6.0,
+            "score_5": 1.5,
+            "criterion": "相对替代方案的实质创新及作用",
+            "status": "证据缺口",
+            "basis": "已具备：说明相对替代方案的差异",
+            "missing": [
+              "说明创新的作用机制",
+              "创新与用户结果挂钩"
+            ],
+            "cap_reason": "全篇未发现任何可定位来源，按证据门槛限制本维度得分上限；创新点仅落在「使用AI/大数据」等技术采用上，未说明新的作用机制，按评分口径封顶"
+          },
+          {
+            "dimension": "发展前景与可行性",
+            "max": 25,
+            "score": 6.6,
+            "score_5": 1.32,
+            "criterion": "实施路径、资源、商业/运营机制、财务与风险",
+            "status": "部分具备",
+            "basis": "已具备：说明资源与团队条件",
+            "missing": [
+              "说明触达/实施路径",
+              "说明成本或收入结构",
+              "说明风险与应对"
+            ],
+            "cap_reason": "全篇未发现任何可定位来源，按证据门槛限制本维度得分上限"
+          },
+          {
+            "dimension": "团队协作与材料一致性",
+            "max": 15,
+            "score": 5.0,
+            "score_5": 1.67,
+            "criterion": "分工、理解程度、材料完整性与跨材料一致",
+            "status": "部分具备",
+            "basis": "已具备：说明分工",
+            "missing": [
+              "说明能力缺口",
+              "材料完整可追溯"
+            ],
+            "cap_reason": "全篇未发现任何可定位来源，按证据门槛限制本维度得分上限"
+          }
+        ],
+        "evidence_gaps": [
+          "全篇没有任何可定位来源（机构/标题/年份/链接），所有结论目前只能作为假设。",
+          "【社会价值】具体场景",
+          "【社会价值】问题重要性有依据",
+          "【社会价值】说明负面影响或边界",
+          "【实践/证据过程】列出可定位来源",
+          "【实践/证据过程】标注事实/假设边界",
+          "【实践/证据过程】说明关键假设与验证方法",
+          "【实践/证据过程】承认证据缺口或局限",
+          "【创新意义】说明创新的作用机制",
+          "【创新意义】创新与用户结果挂钩",
+          "【发展前景与可行性】说明触达/实施路径",
+          "【发展前景与可行性】说明成本或收入结构",
+          "【发展前景与可行性】说明风险与应对",
+          "【团队协作与材料一致性】说明能力缺口",
+          "【团队协作与材料一致性】材料完整可追溯"
+        ],
+        "evidence_distribution": {
+          "counts": {
+            "F": 0,
+            "I": 5,
+            "H": 1,
+            "S": 0
+          },
+          "total": 6,
+          "fact_ratio": 0.0,
+          "notes": [
+            "全部陈述均未命中来源标记：当前材料不足以支撑「事实」级结论，结论只能作为假设使用。"
+          ]
+        },
+        "integrity_risks": [
+          "存在 1 处无来源数字（例如「团队称80%学生有需求，但无来源」）。无法核实的数字不得进入最终结论，请补充来源或改写为假设。",
+          "材料把「使用AI/大数据」等技术采用作为创新点，但没有说明新的作用机制或带来何种可测变化。手册评分表将这类表述列为明确扣分项。"
+        ],
+        "recommendations": [
+          "优先补强最弱维度【实践/证据过程】：列出可定位来源、标注事实/假设边界、说明关键假设与验证方法、承认证据缺口或局限。",
+          "重写创新点：去掉所有技术名词后，说明你的新机制让对方哪个指标发生了变化。",
+          "把最危险的 3—5 个假设单独列出，为每个假设写出课程内可完成的核验动作与失败判定标准。",
+          "每个关键数字补充来源、计算式或明确的假设标记；不要将 Agent 输出直接当作市场事实。",
+          "用「结论—依据—边界—下一步验证」重写最重要的项目结论。"
+        ],
+        "claim_labels": [
+          {
+            "claim": "评审以下项目：面向所有大学生的“AI校园书桥”，通过智能匹配交换闲置教材",
+            "label": "I",
+            "label_name": "推断：基于事实做出的解释，仍需验证",
+            "can_use_now": "仅可作为待验证输入，不得作为结论依据",
+            "reason": "未发现可定位来源，按保守口径降级为待核验陈述（不判为事实）",
+            "verification_step": "补充来源，或明确写为假设并给出验证方法"
+          },
+          {
+            "claim": "团队称80%学生有需求，但无来源",
+            "label": "H",
+            "label_name": "假设：尚未被材料或数据支持的判断",
+            "can_use_now": "仅可作为待验证输入，不得作为结论依据",
+            "reason": "陈述包含具体数字但没有可定位来源；无法核实的数字不得进入最终结论",
+            "verification_step": "补充该数字的机构、标题、年份与链接，或改标为假设并给出估算公式"
+          },
+          {
+            "claim": "创新点是使用AI",
+            "label": "I",
+            "label_name": "推断：基于事实做出的解释，仍需验证",
+            "can_use_now": "仅可作为待验证输入，不得作为结论依据",
+            "reason": "未发现可定位来源，按保守口径降级为待核验陈述（不判为事实）",
+            "verification_step": "补充来源，或明确写为假设并给出验证方法"
+          },
+          {
+            "claim": "盈利依靠广告",
+            "label": "I",
+            "label_name": "推断：基于事实做出的解释，仍需验证",
+            "can_use_now": "仅可作为待验证输入，不得作为结论依据",
+            "reason": "未发现可定位来源，按保守口径降级为待核验陈述（不判为事实）",
+            "verification_step": "补充来源，或明确写为假设并给出验证方法"
+          },
+          {
+            "claim": "没有说明获客、合规和替代方案",
+            "label": "I",
+            "label_name": "推断：基于事实做出的解释，仍需验证",
+            "can_use_now": "仅可作为待验证输入，不得作为结论依据",
+            "reason": "出现推断连接词「说明」，属于对材料作出的解释",
+            "verification_step": "写出所依据的前提事实，并说明该解释在什么条件下不成立"
+          },
+          {
+            "claim": "请按社会价值、实践依据、创新意义、发展前景和团队/实施条件给出结构化评价、证据缺口和下一步修改建议",
+            "label": "I",
+            "label_name": "推断：基于事实做出的解释，仍需验证",
+            "can_use_now": "仅可作为待验证输入，不得作为结论依据",
+            "reason": "未发现可定位来源，按保守口径降级为待核验陈述（不判为事实）",
+            "verification_step": "补充来源，或明确写为假设并给出验证方法"
+          }
+        ],
+        "integrity_note": "本评审在本地完成，未核验外部来源，也不会把输入中的数字、访谈、订单或政策自动认定为事实。来源标记只代表文本中出现了「来源/出处/机构名」等线索，不构成对内容真实性的认定。",
+        "scoring_note": "各维度先按必备证据的命中比例打分，再施加证据门槛：全篇无可定位来源时，任何维度不超过满分的 50%；创新点若仅落在技术采用上，创新维度不超过满分的 30%。",
+        "run_id": "run_8c2d3510e7ef"
+      }
+    },
+    {
+      "id": "U6",
+      "name": "异常与降级",
+      "flow": "异常",
+      "focus": "不假装工具成功；错误可见；已有上下文不丢失；允许安全恢复；日志可定位",
+      "checks": [
+        {
+          "name": "不支持的文件类型：返回明确错误而非假装成功",
+          "passed": true,
+          "detail": "HTTP 400 仅支持 PDF、DOCX、DOC 或 TXT 文件"
+        },
+        {
+          "name": "文件无法解析：返回明确错误而非假装成功",
+          "passed": true,
+          "detail": "HTTP 422 无法提取文件文本，请检查文件是否为空或为扫描图片"
+        },
+        {
+          "name": "会话不存在：返回明确错误而非假装成功",
+          "passed": true,
+          "detail": "HTTP 404 会话不存在，请重新开始"
+        },
+        {
+          "name": "输入超长：返回明确错误而非假装成功",
+          "passed": true,
+          "detail": "HTTP 400 消息过长，请控制在3000字以内"
+        },
+        {
+          "name": "评审输入过短：返回明确错误而非假装成功",
+          "passed": true,
+          "detail": "HTTP 400 评审至少需要20个字符的项目材料"
+        },
+        {
+          "name": "学习问题为空：返回明确错误而非假装成功",
+          "passed": true,
+          "detail": "HTTP 400 请先输入一个学习问题"
+        },
+        {
+          "name": "错误信息对用户可理解（非堆栈、含说明）",
+          "passed": true,
+          "detail": ""
+        }
+      ],
+      "passed": 7,
+      "total": 7,
+      "raw": {
+        "cases": [
+          {
+            "name": "不支持的文件类型",
+            "status": 400,
+            "detail": "仅支持 PDF、DOCX、DOC 或 TXT 文件"
+          },
+          {
+            "name": "文件无法解析",
+            "status": 422,
+            "detail": "无法提取文件文本，请检查文件是否为空或为扫描图片"
+          },
+          {
+            "name": "会话不存在",
+            "status": 404,
+            "detail": "会话不存在，请重新开始"
+          },
+          {
+            "name": "输入超长",
+            "status": 400,
+            "detail": "消息过长，请控制在3000字以内"
+          },
+          {
+            "name": "评审输入过短",
+            "status": 400,
+            "detail": "评审至少需要20个字符的项目材料"
+          },
+          {
+            "name": "学习问题为空",
+            "status": 400,
+            "detail": "请先输入一个学习问题"
+          }
+        ]
+      }
+    },
+    {
+      "id": "C-E01",
+      "name": "证据分类默认值（无来源不判F）",
+      "flow": "local",
+      "focus": "回归：证据分类器默认把无来源陈述判为事实F",
+      "checks": [
+        {
+          "name": "「学校支持建立教材交易平台…」不判为 F",
+          "passed": true,
+          "detail": "实得 I"
+        },
+        {
+          "name": "「社区已同意提供助餐场地…」不判为 F",
+          "passed": true,
+          "detail": "实得 I"
+        },
+        {
+          "name": "「本项目已获得街道支持…」不判为 F",
+          "passed": true,
+          "detail": "实得 I"
+        }
+      ],
+      "passed": 3,
+      "total": 3,
+      "suite": "custom"
+    },
+    {
+      "id": "C-E02",
+      "name": "有来源陈述判为F",
+      "flow": "local",
+      "focus": "回归：—（防止修复后过度保守）",
+      "checks": [
+        {
+          "name": "有来源标记的陈述判为 F",
+          "passed": true,
+          "detail": "实得 F"
+        }
+      ],
+      "passed": 1,
+      "total": 1,
+      "suite": "custom"
+    },
+    {
+      "id": "C-E03",
+      "name": "否定感知",
+      "flow": "local",
+      "focus": "回归：关键词匹配对否定式失效",
+      "checks": [
+        {
+          "name": "「没有调研」视为无证据",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "「依据调研」视为有证据",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "「无来源」视为无证据",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "否定句不产生证据命中",
+          "passed": true,
+          "detail": ""
+        }
+      ],
+      "passed": 4,
+      "total": 4,
+      "suite": "custom"
+    },
+    {
+      "id": "C-E04",
+      "name": "评审评分门槛",
+      "flow": "local",
+      "focus": "回归：无证据项目得到87分",
+      "checks": [
+        {
+          "name": "无来源项目总分 < 50",
+          "passed": true,
+          "detail": "实得 23.8/100"
+        },
+        {
+          "name": "质量等级为 0 或 1",
+          "passed": true,
+          "detail": "实得 1 严重缺陷"
+        },
+        {
+          "name": "证据缺口非空",
+          "passed": true,
+          "detail": "实得 15 条"
+        },
+        {
+          "name": "识别技术堆砌风险",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "创新维度被门槛封顶",
+          "passed": true,
+          "detail": "实得 6.0/20"
+        }
+      ],
+      "passed": 5,
+      "total": 5,
+      "suite": "custom"
+    },
+    {
+      "id": "C-E05",
+      "name": "评审评分区分度",
+      "flow": "local",
+      "focus": "回归：—（防止修复后过度收紧）",
+      "checks": [
+        {
+          "name": "证据充分项目总分 >= 70",
+          "passed": true,
+          "detail": "实得 85.7/100"
+        },
+        {
+          "name": "质量等级 >= 3",
+          "passed": true,
+          "detail": "实得 3 良好"
+        }
+      ],
+      "passed": 2,
+      "total": 2,
+      "suite": "custom"
+    },
+    {
+      "id": "C-F1-01",
+      "name": "F1概念覆盖",
+      "flow": "local",
+      "focus": "回归：F1仅有2个硬编码分支",
+      "checks": [
+        {
+          "name": "知识库收录概念 >= 12 个",
+          "passed": true,
+          "detail": "实得 13 个"
+        },
+        {
+          "name": "13 个常见概念全部命中",
+          "passed": true,
+          "detail": "全部命中"
+        }
+      ],
+      "passed": 2,
+      "total": 2,
+      "suite": "custom"
+    },
+    {
+      "id": "C-F1-02",
+      "name": "知识库无编造来源",
+      "flow": "local",
+      "focus": "回归：—（证据诚信）",
+      "checks": [
+        {
+          "name": "无词条声称外部链接来源",
+          "passed": true,
+          "detail": "无"
+        },
+        {
+          "name": "每个词条都有来源状态声明",
+          "passed": true,
+          "detail": ""
+        }
+      ],
+      "passed": 2,
+      "total": 2,
+      "suite": "custom"
+    },
+    {
+      "id": "C-L-02",
+      "name": "版本可定位",
+      "flow": "local",
+      "focus": "回归：无法确认V2相对什么版本优化",
+      "checks": [
+        {
+          "name": "返回 agent_version",
+          "passed": true,
+          "detail": "2.1.0"
+        },
+        {
+          "name": "返回 prompt_version",
+          "passed": true,
+          "detail": "2.1.0"
+        },
+        {
+          "name": "返回 kb_version",
+          "passed": true,
+          "detail": "2.1.0"
+        },
+        {
+          "name": "返回 git 提交号",
+          "passed": true,
+          "detail": "9f3236d"
+        },
+        {
+          "name": "返回模型名",
+          "passed": true,
+          "detail": "deepseek-chat"
+        }
+      ],
+      "passed": 5,
+      "total": 5,
+      "suite": "custom"
+    },
+    {
+      "id": "C-S-01",
+      "name": "日志脱敏",
+      "flow": "local",
+      "focus": "回归：—（密钥与个人信息保护）",
+      "checks": [
+        {
+          "name": "API Key 被脱敏",
+          "passed": true,
+          "detail": "key=sk-***REDACTED*** phone=***PHONE*** token-***REDACTED***"
+        },
+        {
+          "name": "手机号被脱敏",
+          "passed": true,
+          "detail": ""
+        }
+      ],
+      "passed": 2,
+      "total": 2,
+      "suite": "custom"
+    },
+    {
+      "id": "C-X-01",
+      "name": "降级透明",
+      "flow": "http",
+      "focus": "回归：降级后仍记为success，next_task为空",
+      "checks": [
+        {
+          "name": "响应标记 degraded",
+          "passed": true,
+          "detail": "degraded=True"
+        },
+        {
+          "name": "降级原因可读",
+          "passed": true,
+          "detail": "LLM 调用失败（APIStatusError）"
+        },
+        {
+          "name": "降级下仍给出 next_task",
+          "passed": true,
+          "detail": "长度 233"
+        },
+        {
+          "name": "运行状态记为 degraded 而非 success",
+          "passed": true,
+          "detail": "实得 degraded"
+        }
+      ],
+      "passed": 4,
+      "total": 4,
+      "suite": "custom"
+    },
+    {
+      "id": "C-L-01",
+      "name": "日志字段完整性",
+      "flow": "http",
+      "focus": "回归：日志仅有run_id与flow",
+      "checks": [
+        {
+          "name": "身份字段完整",
+          "passed": true,
+          "detail": "完整"
+        },
+        {
+          "name": "时间字段完整",
+          "passed": true,
+          "detail": "完整"
+        },
+        {
+          "name": "状态字段完整",
+          "passed": true,
+          "detail": "完整"
+        },
+        {
+          "name": "行为字段完整",
+          "passed": true,
+          "detail": "完整"
+        },
+        {
+          "name": "人机边界字段完整",
+          "passed": true,
+          "detail": "完整"
+        }
+      ],
+      "passed": 5,
+      "total": 5,
+      "suite": "custom"
+    },
+    {
+      "id": "C-H-01",
+      "name": "人工干预可追溯",
+      "flow": "http",
+      "focus": "回归：人工干预无处记录",
+      "checks": [
+        {
+          "name": "可记录人工干预",
+          "passed": true,
+          "detail": "HTTP 200 total=1"
+        },
+        {
+          "name": "非法干预类型被拒绝",
+          "passed": true,
+          "detail": "HTTP 400"
+        }
+      ],
+      "passed": 2,
+      "total": 2,
+      "suite": "custom"
+    },
+    {
+      "id": "C-P-01",
+      "name": "本项目材料评审",
+      "flow": "http",
+      "focus": "回归：—（大创项目材料自评）",
+      "checks": [
+        {
+          "name": "总分为合理区间（50—100）",
+          "passed": true,
+          "detail": "实得 90.0"
+        },
+        {
+          "name": "给出五个维度",
+          "passed": true,
+          "detail": "实得 5"
+        },
+        {
+          "name": "识别出模拟/假设边界",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "建议可执行",
+          "passed": true,
+          "detail": "实得 4"
+        },
+        {
+          "name": "未把无来源内容判为事实",
+          "passed": true,
+          "detail": "F=2（材料含统计公报来源，应至少命中1条）"
+        }
+      ],
+      "passed": 5,
+      "total": 5,
+      "suite": "custom"
+    }
+  ],
+  "summary": {
+    "passed": 77,
+    "total": 77,
+    "pass_rate": 1.0,
+    "duration_sec": 12.6
+  },
+  "version": {
+    "agent_version": "2.1.0",
+    "agent_stage": "V2",
+    "prompt_version": "2.1.0",
+    "kb_version": "2.1.0",
+    "model": "deepseek-chat",
+    "llm_configured": true,
+    "git_commit": "9f3236d",
+    "git_dirty": true,
+    "version_note": "git_dirty=true 表示工作区存在未提交改动，此时 git_commit 不能单独作为版本凭证，需要通过目录快照或压缩包一并留存。"
+  },
+  "finished_at": "2026-09-13T23:46:57.538938"
+}
