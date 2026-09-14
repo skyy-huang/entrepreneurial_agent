@@ -83,6 +83,9 @@ class AgentState(TypedDict):
     # ── 角色类型：student / teacher / admin ───────────────────
     user_role: str
 
+    # ── 降级标记：LLM 不可用时记录原因，供日志如实反映运行状态 ──
+    degraded_reason: Optional[str]
+
 
 def make_initial_state(session_id: str, student_id: str, user_role: str = "student", industry: Optional[str] = None, level: Optional[str] = None) -> AgentState:
     return AgentState(
@@ -118,4 +121,5 @@ def make_initial_state(session_id: str, student_id: str, user_role: str = "stude
         competition_mode=None,
         teacher_intervention=None,
         user_role=user_role,
+        degraded_reason=None,
     )

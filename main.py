@@ -3,14 +3,17 @@
 启动命令：uvicorn main:app --reload --port 8121
 新增：RBAC权限隔离 / Admin接口 / 竞赛评分路由 / 教师干预接口 / 日志观测
 """
+import json
 import os
+import secrets
 import uuid
 import logging
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Header, UploadFile, File, Form
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -27,11 +30,15 @@ from graph.state import make_initial_state
 from graph.workflow import app_graph
 from teacher.dashboard import aggregate_class_data, generate_student_capability_report, generate_grading_report
 from storage import load_sessions, save_sessions, load_users, save_users
-from observability import start_run, add_step, finish_run
+from observability import (
+    start_run, add_step, finish_run, mark_degraded, record_intervention, iter_runs,
+    INTERVENTION_KINDS,
+)
+from version import get_version_info, AGENT_VERSION
 from workflows import theory_response, review_response, classify_claims
 from graph.document_agent import parse_and_summarize_document
 
-app = FastAPI(title="双创智能教练 V2", version="2.0.0")
+app = FastAPI(title="双创智能教练 V2", version=AGENT_VERSION)
 
 app.add_middleware(
     CORSMiddleware,
@@ -46,16 +53,43 @@ users_store: dict = load_users()
 
 # ─────────────────────────────────────────────────────────────
 # RBAC 账号配置
+#
+# 凭据一律从环境变量读取，不写死在代码里。原实现把教师和管理员口令明文
+# 硬编码在源码中（含一个管理员默认口令），直接违反手册自检项
+# 「代码、配置和日志中不存在API密钥或不必要个人信息」。
+#
+# 配置方式（.env）：
+#   TEACHER_ACCOUNTS={"teacher1":"你的口令","teacher2":"另一个口令"}
+#   ADMIN_ACCOUNTS={"admin":"你的管理员口令"}
+# 未配置时自动生成一次性随机口令，并在启动日志中以 WARNING 提示一次。
 # ─────────────────────────────────────────────────────────────
-TEACHERS = {
-    "teacher1": {"password": "123456", "role": "teacher"},
-    "teacher2": {"password": "888888", "role": "teacher"},
-    "wang": {"password": "password", "role": "teacher"},
-}
+def _load_accounts(env_var: str, role: str) -> dict:
+    raw = os.getenv(env_var, "").strip()
+    accounts: dict = {}
+    if raw:
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, dict):
+                for username, password in parsed.items():
+                    accounts[str(username)] = {"password": str(password), "role": role}
+        except json.JSONDecodeError:
+            logger.error(
+                "%s 不是合法 JSON，已忽略本变量。格式示例：{\"账号\":\"口令\"}", env_var
+            )
+    if not accounts:
+        username = "teacher" if role == "teacher" else "admin"
+        generated = secrets.token_urlsafe(9)
+        accounts = {username: {"password": generated, "role": role}}
+        logger.warning(
+            "[AUTH] 未配置 %s，已为账号 '%s' 生成一次性随机口令：%s  "
+            "（请在 .env 中配置 %s 以获得固定口令）",
+            env_var, username, generated, env_var,
+        )
+    return accounts
 
-ADMINS = {
-    "admin": {"password": "Admin2026@", "role": "admin"},
-}
+
+TEACHERS = _load_accounts("TEACHER_ACCOUNTS", "teacher")
+ADMINS = _load_accounts("ADMIN_ACCOUNTS", "admin")
 
 ALL_USERS = {**TEACHERS, **ADMINS}
 
@@ -222,10 +256,11 @@ async def chat(req: ChatRequest):
     if len(message) > 3000:
         raise HTTPException(status_code=400, detail="消息过长，请控制在3000字以内")
 
-    run = start_run("F2", "manual")
+    existing = sessions_store[req.session_id]
+    run = start_run("F2", "manual", project_version=existing.get("project_version", ""))
     run["session_id"] = req.session_id
     add_step(run, "input_validation", "success", f"message_length={len(message)}")
-    state = dict(sessions_store[req.session_id])
+    state = dict(existing)
     state["current_input"] = message
     state["agent_mode"] = req.agent_mode
 
@@ -234,8 +269,13 @@ async def chat(req: ChatRequest):
         add_step(run, "agent_workflow", "success", "extractor->critic->coach")
     except Exception as exc:
         add_step(run, "agent_workflow", "failed", type(exc).__name__)
-        finish_run(run, "failed", type(exc).__name__)
+        finish_run(run, "failed", type(exc).__name__, str(exc))
         raise HTTPException(status_code=503, detail="项目指导暂时不可用，已有上下文已保留，请稍后安全重试") from exc
+
+    # 如实记录降级：LLM 不可用时流程仍然完成了任务，但审计者必须能看出差别
+    degraded_reason = result.get("degraded_reason")
+    if degraded_reason:
+        mark_degraded(run, degraded_reason)
 
     sessions_store[req.session_id] = result
     save_sessions(sessions_store)
@@ -255,6 +295,8 @@ async def chat(req: ChatRequest):
         "retrieved_hyperedge_types": result.get("retrieved_hyperedge_types", []),
         "rule_engine_result": result.get("rule_engine_result", {}),
         "kb_context": result.get("kb_context", {}),
+        "degraded": bool(degraded_reason),
+        "degraded_reason": degraded_reason or "",
         "run_id": run["run_id"],
     }
 
@@ -318,10 +360,13 @@ async def upload_document(
         add_step(run, "agent_workflow", "success", "file->extractor->critic->coach")
     except Exception as exc:
         add_step(run, "agent_workflow", "failed", type(exc).__name__)
-        finish_run(run, "failed", type(exc).__name__)
+        finish_run(run, "failed", type(exc).__name__, str(exc))
         raise HTTPException(status_code=503, detail="文件已读取，但项目指导暂时不可用，请稍后重试") from exc
     sessions_store[session_id] = result
     save_sessions(sessions_store)
+    degraded_reason = result.get("degraded_reason")
+    if degraded_reason:
+        mark_degraded(run, degraded_reason)
     finish_run(run, "success")
     return {
         "session_id": session_id,
@@ -332,6 +377,8 @@ async def upload_document(
         "capability_scores": result["capability_scores"],
         "current_phase": result["current_phase"],
         "round_count": result["round_count"],
+        "degraded": bool(degraded_reason),
+        "degraded_reason": degraded_reason or "",
         "run_id": run["run_id"],
     }
 
@@ -367,17 +414,147 @@ async def classify_evidence(req: EvidenceRequest):
     return {"claims": classify_claims(req.text), "run_id": run["run_id"], "note": "自动分类仅作初筛，最终标注由项目成员负责。"}
 
 
+class ScoreRequest(BaseModel):
+    session_id: str
+    project_text: str
+    competition: Optional[str] = None
+
+
+@app.post("/api/score")
+async def score_project(req: ScoreRequest):
+    """R1–R9 逐项评分：证据引擎底分 + LLM 可选加分。
+
+    该节点独立于 F2 的线性工作流，避免每轮对话都跑一遍九维评分。
+    未配置或不可用 LLM 时只输出证据引擎算出的底分（delta=0）。
+    """
+    if req.session_id not in sessions_store:
+        raise HTTPException(status_code=404, detail="会话不存在，请重新开始")
+    if len(req.project_text.strip()) < 20:
+        raise HTTPException(status_code=400, detail="评分至少需要20个字符的项目材料")
+
+    run = start_run("score", "manual")
+    run["session_id"] = req.session_id
+    state = dict(sessions_store[req.session_id])
+    state["current_input"] = req.project_text.strip()
+    if req.competition:
+        state["competition_mode"] = req.competition
+    add_step(run, "input_validation", "success", f"project_length={len(req.project_text.strip())}")
+
+    from graph.nodes import rubric_scoring_node
+
+    try:
+        result = await rubric_scoring_node(state)
+        add_step(run, "rubric_scoring", "success", f"items={len(result.get('rubric_scores', {}))}")
+    except Exception as exc:
+        add_step(run, "rubric_scoring", "failed", type(exc).__name__)
+        finish_run(run, "failed", type(exc).__name__, str(exc))
+        raise HTTPException(status_code=503, detail="评分暂时不可用，请稍后重试") from exc
+
+    if not _llm_available_for_run():
+        mark_degraded(run, "LLM 不可用，仅输出证据引擎底分（score_delta=0）")
+
+    sessions_store[req.session_id]["rubric_scores"] = result.get("rubric_scores", {})
+    sessions_store[req.session_id]["score_breakdown"] = result.get("score_breakdown", {})
+    save_sessions(sessions_store)
+    finish_run(run, "success")
+
+    return {
+        "session_id": req.session_id,
+        "rubric_scores": result.get("rubric_scores", {}),
+        "score_breakdown": result.get("score_breakdown", {}),
+        "coach_response": result.get("coach_response", ""),
+        "run_id": run["run_id"],
+    }
+
+
+def _llm_available_for_run() -> bool:
+    """判断当前是否配置了可用的 API Key（不代表余额可用）。"""
+    from version import llm_configured
+
+    return llm_configured()
+
+
+class InterventionRecordRequest(BaseModel):
+    session_id: str
+    kind: str                      # 补充 / 修改 / 确认 / 绕过 / 重跑 / 纠错
+    detail: str = ""
+    run_id: Optional[str] = None   # 关联到具体一次运行，便于回溯
+
+
+@app.post("/api/intervention")
+async def record_human_intervention(req: InterventionRecordRequest):
+    """记录人工干预。
+
+    手册明确要求：改写 Agent 输出、手工补齐遗漏模块、替换错误引用、
+    修改测试输入、重跑失败任务都必须记录，且不得把人工成果计为 Agent 能力。
+    这是「人机边界透明」原则的落地点。
+    """
+    if req.session_id not in sessions_store:
+        raise HTTPException(status_code=404, detail="会话不存在，请重新开始")
+    if req.kind not in INTERVENTION_KINDS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"干预类型必须是以下之一：{'、'.join(INTERVENTION_KINDS)}",
+        )
+    state = sessions_store[req.session_id]
+    log = state.setdefault("human_interventions", [])
+    entry = {
+        "kind": req.kind,
+        "detail": (req.detail or "").strip()[:500],
+        "run_id": req.run_id or "",
+        "at": datetime.now(timezone.utc).isoformat(),
+    }
+    log.append(entry)
+    sessions_store[req.session_id] = state
+    save_sessions(sessions_store)
+    logger.info(
+        "[INTERVENTION] session=%s kind=%s run=%s detail=%s",
+        req.session_id, req.kind, req.run_id or "-", entry["detail"][:80],
+    )
+    return {"message": "人工干预已记录", "session_id": req.session_id, "entry": entry,
+            "total": len(log)}
+
+
+@app.get("/api/version")
+async def api_version():
+    """版本快照。
+
+    手册第三阶段要求保存「Agent V2 代码提交号或不可变版本标签」以及
+    「提示词、知识库、工具和关键配置快照」，并且最终结论要能回到材料版本、
+    运行编号和证据来源。此接口为版本快照提供单一可信来源。
+    """
+    return get_version_info()
+
+
+@app.get("/api/runs")
+async def list_runs(flow: Optional[str] = None, limit: int = 50):
+    """列出最近的运行记录摘要，供测试报告与异常审计使用。"""
+    limit = max(1, min(limit, 500))
+    items = []
+    for record in iter_runs(limit=limit if not flow else None):
+        if flow and record.get("flow") != flow:
+            continue
+        items.append({
+            "run_id": record.get("run_id"),
+            "flow": record.get("flow"),
+            "test_id": record.get("test_id"),
+            "status": record.get("status"),
+            "degraded": record.get("degraded", False),
+            "started_at": record.get("started_at"),
+            "duration_ms": record.get("duration_ms"),
+            "agent_version": record.get("agent_version"),
+            "git_commit": record.get("git_commit"),
+            "human_interventions": len(record.get("human_interventions", [])),
+        })
+    return {"count": len(items), "items": items[-limit:]}
+
+
 @app.get("/api/runs/{run_id}")
 async def get_run(run_id: str):
     """按 run_id 定位脱敏运行记录。"""
-    import json
-    run_file = os.path.join(os.path.dirname(__file__), "logs", "runs.jsonl")
-    if not os.path.exists(run_file):
-        raise HTTPException(status_code=404, detail="运行记录不存在")
-    with open(run_file, "r", encoding="utf-8") as file:
-        for line in file:
-            if line.strip() and json.loads(line).get("run_id") == run_id:
-                return json.loads(line)
+    for record in iter_runs():
+        if record.get("run_id") == run_id:
+            return record
     raise HTTPException(status_code=404, detail="运行记录不存在")
 
 
@@ -600,11 +777,27 @@ async def serve_teacher():
 
 @app.get("/admin")
 async def serve_admin():
-    # 若没有独立 admin 页面，返回 teacher 页面（带权限隔离）
+    """管理员控制台页面。
+
+    原实现会在 admin.html 缺失时静默回退到教师页面，这会让访问 /admin 的人
+    误以为存在管理员控制台、实际看到的却是教师视图。这里改为如实说明：
+    管理接口可用，但独立控制台页面尚未实现。
+    """
     admin_path = "frontend/admin.html"
     if os.path.exists(admin_path):
         return FileResponse(admin_path)
-    return FileResponse("frontend/teacher.html")
+    return JSONResponse(
+        status_code=501,
+        content={
+            "detail": "管理员控制台页面（frontend/admin.html）尚未实现。",
+            "available_api": [
+                "/api/admin/global-dashboard",
+                "/api/admin/users",
+                "/api/admin/users/action",
+            ],
+            "teacher_console": "/teacher",
+        },
+    )
 
 
 # 静态资源

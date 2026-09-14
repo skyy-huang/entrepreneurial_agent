@@ -30,3 +30,13 @@ logs/runs.jsonl
 .DS_Store
 
 data/
+
+# --- 交付物的可再生产物 ---
+# deliverables/build/ 下的内容都能由 build/ 目录里的脚本重新生成，
+# 把中间产物提交进仓库只会造成「文档与生成脚本不一致」的漂移。
+deliverables/build/slides/
+deliverables/build/docx/
+deliverables/build/merged/
+# 02_源代码是源码快照，可由 copy_source.py 重新生成；
+# 直接把源码副本提交进仓库会与根目录的实际代码产生双份真相。
+deliverables/02_源代码/

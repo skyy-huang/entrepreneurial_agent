@@ -4,9 +4,12 @@
   critic_node     → H1-H20 规则审计 + 追问策略选择 + 超图溯源日志
   coach_node      → 苏格拉底式提问 + 单任务分配 + Rubric 打分
 
-新增：
-  rubric_scoring_node  → 逐项 Rubric 评分（R1-R9）
-  competition_node     → 竞赛顾问模式路由
+   rubric_scoring_node → 逐项 Rubric 评分（R1-R9）
+
+注意：rubric_scoring_node **不在** F2 的线性工作流中（见 graph/workflow.py）。
+F2 每轮对话都跑一遍 R1-R9 评分既慢又偏离「项目指导」的语义，因此它以独立的
+/api/score 接口对外提供。竞赛顾问模式则由 coach_node 依据 agent_mode 处理，
+不存在名为 competition_node 的独立节点（旧版 docstring 有此误述）。
 """
 import os
 import json
@@ -197,6 +200,7 @@ async def critic_node(state: AgentState) -> dict:
             "current_phase": rule_result.get("phase_recommendation", state["current_phase"]),
             "detected_keywords": [],
             "probing_strategy": get_strategy_for_fallacy([]),
+            "degraded_reason": "Critic 阶段 LLM 不可用，已改用确定性规则引擎完成审计",
             "rule_engine_result": {
                 "triggered_rules": [f["rule_id"] for f in phase1_fallacies],
                 "gap_fields": rule_result["gap_fields"],
@@ -234,6 +238,7 @@ async def critic_node(state: AgentState) -> dict:
             "current_phase": rule_result.get("phase_recommendation", state["current_phase"]),
             "detected_keywords": [],
             "probing_strategy": get_strategy_for_fallacy([]),
+            "degraded_reason": "Critic 阶段 LLM 不可用，已改用确定性规则引擎完成审计",
             "rule_engine_result": {
                 "triggered_rules": [f["rule_id"] for f in phase1_fallacies],
                 "gap_fields": rule_result["gap_fields"],
@@ -319,34 +324,163 @@ async def critic_node(state: AgentState) -> dict:
 # ─────────────────────────────────────────────────────────────
 # Node 3: Coach
 # ─────────────────────────────────────────────────────────────
+# 缺口字段 -> 学生可理解的中文表述
+_GAP_LABELS = {
+    "target_customer": "目标客户",
+    "core_pain_point": "核心痛点",
+    "value_proposition": "价值主张",
+    "revenue_model": "收入模式",
+    "key_channels": "触达渠道",
+    "cost_structure": "成本结构",
+    "price_point": "定价",
+    "team_description": "团队构成",
+    "technology_level": "技术路线",
+    "stage": "项目阶段",
+}
+
+
+# 修订类任务的识别：手册 U4 要求「只修订受影响的模块，不整体重写，保留模拟标识」
+_REVISION_MARKERS = ("新增", "修订", "修改", "变更", "调整", "基于原", "补充两点", "更新")
+
+# 受影响模块的判定关键词
+_MODULE_KEYWORDS = {
+    "用户场景": ("场景", "用户", "学期", "时点", "集中处理", "频率"),
+    "替代方案": ("替代", "竞品", "微信群", "免费", "现有做法"),
+    "价值主张": ("价值", "主张", "改善", "收益"),
+    "风险与边界": ("风险", "合规", "隐私", "伦理"),
+    "定价与成本": ("价格", "定价", "付费", "成本", "元"),
+    "渠道与触达": ("渠道", "触达", "推广", "运营"),
+}
+
+
+def _local_revision_reply(state: AgentState, reason: str) -> dict:
+    """修订场景的降级输出：只点出受影响的模块，并明确保留模拟标识。"""
+    text = state.get("current_input", "")
+
+    affected = [
+        name for name, keywords in _MODULE_KEYWORDS.items()
+        if any(kw in text for kw in keywords)
+    ]
+    untouched = [name for name in _MODULE_KEYWORDS if name not in affected]
+
+    affected_text = "、".join(affected) if affected else "用户场景、替代方案"
+    untouched_text = "、".join(untouched) if untouched else "其余模块"
+
+    next_task = (
+        f"**Task description**：只改写受影响的 {affected_text}，其余模块保持原文不变。\n"
+        "**Template/Guideline**：\n"
+        "1. 逐条标明新增内容是「模拟 S」还是「事实 F」——教师提供的模拟情境一律标 S；\n"
+        "2. 对每个被改写的模块，写一行「原文 → 修改后 → 修改理由」；\n"
+        "3. 没有被新信息影响的模块，明确写「本次不修改」。\n"
+        "**Acceptance Criteria**：受影响的模块已更新并标注证据类型，未受影响模块未被改写，"
+        "每条修改都能说明理由，模拟材料未被表述为真实市场证据。"
+    )
+
+    reply = (
+        f"⚠️ 当前运行于本地确定性模式（原因：{reason}）。以下反馈来自规则引擎，未调用大模型。\n\n"
+        "1. **Project Stage**（项目阶段）：项目骨架已有，本次为增量修订。\n\n"
+        "2. **Current Diagnosis**（当前诊断）：\n"
+        f"新信息只影响部分模块，应做定点修订而不是整体重写。受影响模块：{affected_text}；"
+        f"不受影响、应保持原样的模块：{untouched_text}。\n\n"
+        "3. **Evidence Used**（诊断依据）：\n"
+        "- 你本次补充的内容属于教师提供的模拟情境，按证据口径标记为 **模拟 S**。\n"
+        "- 模拟 S 不能作为真实市场证据，只能用于生成待验证假设。\n"
+        "- 本次未命中案例库对标，以上判断仅基于你提供的内容。\n\n"
+        "4. **Impact if Unfixed**（不修复后果）：\n"
+        "若把模拟情境当作真实证据写入材料，或借修订之名整体重写，会使材料与原始版本无法对照，"
+        "评审时无法说明修改理由，也会削弱后续验证的可追溯性。\n\n"
+        f"5. **Next Task**（下一步任务）：\n{next_task}\n\n"
+        "⚠️ AI辅助分析，仅供参考，请结合实际情况转化"
+    )
+
+    return {
+        "coach_response": reply,
+        "next_task": next_task,
+        "thought_process": (
+            "本地模式：识别为修订类任务，按模块关键词定位受影响范围，"
+            "输出定点修订指令并保留模拟标识。"
+        ),
+        "degraded_reason": reason,
+        "messages": list(state["messages"]) + [
+            {"role": "user", "content": state["current_input"]},
+            {"role": "assistant", "content": reply},
+        ],
+        "round_count": state["round_count"] + 1,
+    }
+
+
+def _local_coach_reply(state: AgentState, reason: str) -> dict:
+    """LLM 不可用时的确定性降级输出。
+
+    降级输出同样必须满足手册对 F2 的最低完整输出要求：围绕用户、场景、问题、
+    证据、方案、创新与风险推进，并给出唯一的下一步任务。因此这里按规则引擎
+    的缺口字段生成完整结构，而不是丢一句泛泛的提示——旧实现正是因为在降级
+    分支里没有可被解析的任务段落，导致 next_task 恒为空。
+    """
+    # 修订类任务走单独分支：U4 要求只改受影响模块、保留模拟标识、说明修改理由
+    if any(marker in state.get("current_input", "") for marker in _REVISION_MARKERS):
+        return _local_revision_reply(state, reason)
+
+    fallacies = state.get("detected_fallacies", [])
+    summary = state.get("extracted_data", {}).get("summary", {})
+    missing = list(dict.fromkeys(state.get("rule_engine_result", {}).get("gap_fields", []))) or []
+
+    focus = fallacies[0]["description"] if fallacies else "当前描述已形成基础闭环，但证据仍不充分"
+    gap_cn = [_GAP_LABELS.get(field, field) for field in missing[:3]]
+
+    if gap_cn:
+        task_desc = f"补齐以下尚未提及的关键信息：{'、'.join(gap_cn)}。"
+    else:
+        task_desc = "为当前最核心的一条结论补充一个可核验来源，或明确标注它是假设。"
+
+    guideline = (
+        "1. 用一句话写清「哪类用户在什么场景下遇到什么问题」；\n"
+        "2. 对每一条结论标注证据类型：事实 F（附来源）／推断 I／假设 H／模拟 S；\n"
+        "3. 没有来源的数字一律标为 H，并写出你打算怎么核验它。"
+    )
+    criteria = "目标用户可识别、至少一条结论标注了证据类型、无来源数字已标为假设。"
+
+    next_task = (
+        f"**Task description**：{task_desc}\n"
+        f"**Template/Guideline**：\n{guideline}\n"
+        f"**Acceptance Criteria**：{criteria}"
+    )
+
+    coach_reply = (
+        f"⚠️ 当前运行于本地确定性模式（原因：{reason}）。以下反馈来自规则引擎，未调用大模型。\n\n"
+        "1. **Project Stage**（项目阶段）："
+        f"{summary.get('stage') or '想法期（尚未提供阶段信息）'}\n\n"
+        "2. **Current Diagnosis**（当前诊断）：\n"
+        f"{focus}\n\n"
+        "3. **Evidence Used**（诊断依据）：\n"
+        f"- 目标客户：{summary.get('target_customer') or '未提及'}\n"
+        f"- 核心痛点：{summary.get('core_pain_point') or '未提及'}\n"
+        f"- 价值主张：{summary.get('value_proposition') or '未提及'}\n"
+        "- 本次未命中案例库对标，以上判断仅基于你提供的内容。\n\n"
+        "4. **Impact if Unfixed**（不修复后果）：\n"
+        "缺少可核验的目标用户与痛点证据时，后续的方案、定价和渠道都建立在假设之上，"
+        "无法判断问题是否真实存在。\n\n"
+        f"5. **Next Task**（下一步任务）：\n{next_task}\n\n"
+        "⚠️ AI辅助分析，仅供参考，请结合实际情况转化"
+    )
+
+    return {
+        "coach_response": coach_reply,
+        "next_task": next_task,
+        "thought_process": "本地模式：先运行确定性规则引擎识别缺口，再围绕最高优先级缺口生成唯一行动任务。",
+        "degraded_reason": reason,
+        "messages": list(state["messages"]) + [
+            {"role": "user", "content": state["current_input"]},
+            {"role": "assistant", "content": coach_reply},
+        ],
+        "round_count": state["round_count"] + 1,
+    }
+
+
 async def coach_node(state: AgentState) -> dict:
     """基于审计结果，用苏格拉底提问法生成回复，每次只分配1个行动任务"""
     if not _llm_available():
-        fallacies = state.get("detected_fallacies", [])
-        summary = state.get("extracted_data", {}).get("summary", {})
-        missing = state.get("rule_engine_result", {}).get("gap_fields", [])
-        focus = fallacies[0]["description"] if fallacies else "当前描述已经形成基础闭环"
-        next_task = "请补充一个具体客户、一个真实痛点证据，以及客户目前采用的替代方案。"
-        if missing:
-            next_task = f"请优先补充：{', '.join(dict.fromkeys(missing[:3]))}。每项都给出一个具体事实或数字。"
-        coach_reply = (
-            "这是本地诊断模式：当前未配置 DeepSeek API Key，因此先使用规则引擎给你反馈。\n\n"
-            f"**当前最需要验证的点**：{focus}\n\n"
-            f"你刚才的输入已记录。目标客户：{summary.get('target_customer', '未提及')}；"
-            f"核心痛点：{summary.get('core_pain_point', '未提及')}。\n\n"
-            "不要先扩展功能，请先把下面这一条证据补齐。"
-        )
-        new_messages = list(state["messages"]) + [
-            {"role": "user", "content": state["current_input"]},
-            {"role": "assistant", "content": coach_reply},
-        ]
-        return {
-            "coach_response": coach_reply,
-            "next_task": next_task,
-            "thought_process": "本地模式：先运行确定性规则，再围绕最高优先级缺口生成一条行动任务。",
-            "messages": new_messages,
-            "round_count": state["round_count"] + 1,
-        }
+        return _local_coach_reply(state, "未配置 DeepSeek API Key")
 
     llm = _get_llm(temperature=0.7)
 
@@ -404,22 +538,15 @@ async def coach_node(state: AgentState) -> dict:
     try:
         response = await llm.ainvoke(lc_messages)
         coach_reply = response.content
+        degraded_reason = None
     except Exception as exc:
         logger.warning("[COACH] LLM unavailable, using local response: %s", exc)
-        fallacies = state.get("detected_fallacies", [])
-        missing = state.get("rule_engine_result", {}).get("gap_fields", [])
-        focus = fallacies[0]["description"] if fallacies else "当前描述已经形成基础闭环"
-        coach_reply = (
-            "当前使用本地诊断模式：AI 服务暂时不可用，先用规则引擎给你反馈。\n\n"
-            f"**最需要验证的点**：{focus}\n\n"
-            "不要先扩展功能，请先补齐一条可验证证据。"
-        )
-        if missing:
-            coach_reply += f"\n\n缺失字段：{', '.join(dict.fromkeys(missing[:3]))}。"
+        # 降级到确定性引擎：输出必须仍然完整，且必须如实告知用户当前不是大模型在回答
+        return _local_coach_reply(state, f"LLM 调用失败（{type(exc).__name__}）")
 
     # 提取唯一任务与思考过程
     next_task = _extract_task(coach_reply)
-    
+
     # === 构建图谱驱动的思维过程展示 ===
     tp_lines = ["=== 🧠 结构化图谱推理引擎 (Graph-Driven Reasoning) ==="]
     
@@ -486,6 +613,7 @@ async def coach_node(state: AgentState) -> dict:
         "coach_response": coach_reply,
         "next_task": next_task,
         "thought_process": thought_process,
+        "degraded_reason": degraded_reason,
         "messages": new_messages,
         "round_count": state["round_count"] + 1,
     }
@@ -565,24 +693,28 @@ async def rubric_scoring_node(state: AgentState) -> dict:
                 {rid: f["score_floor"] for rid, f in floors.items()})
 
     # == Phase 2 (LLM): delta on top of floors ==
-    llm = _get_llm(temperature=0.2)
-
-    messages = [
-        SystemMessage(content=_RUBRIC_SCORING_PROMPT_V2.format(
-            floor_summary=floor_summary,
-            max_delta="2",
-            competition_context=competition_context,
-            project_text=project_text[:3000],
-        )),
-        HumanMessage(content="Output score_delta for each R1-R9."),
-    ]
-
-    response = await llm.ainvoke(messages)
-    llm_result = _parse_json_response(response.content, {
-        "rubric_deltas": {},
-        "critical_gaps": [],
-        "quick_wins": [],
-    })
+    # 此处必须容错：LLM 不可用时应退化为「仅使用证据引擎算出的分数下限」，
+    # 而不是让异常冒泡打断整个流程。原实现没有 try/except，一旦此节点被接入
+    # 工作流，API 失败就会直接击穿请求。
+    llm_result: dict = {"rubric_deltas": {}, "critical_gaps": [], "quick_wins": []}
+    if _llm_available():
+        llm = _get_llm(temperature=0.2)
+        messages = [
+            SystemMessage(content=_RUBRIC_SCORING_PROMPT_V2.format(
+                floor_summary=floor_summary,
+                max_delta="2",
+                competition_context=competition_context,
+                project_text=project_text[:3000],
+            )),
+            HumanMessage(content="Output score_delta for each R1-R9."),
+        ]
+        try:
+            response = await llm.ainvoke(messages)
+            llm_result = _parse_json_response(response.content, llm_result)
+        except Exception as exc:
+            logger.warning("[RUBRIC] LLM delta unavailable, floors only: %s", exc)
+    else:
+        logger.info("[RUBRIC] LLM not configured, using evidence-engine floors only")
 
     # == Merge: floor + delta -> final ==
     llm_deltas = llm_result.get("rubric_deltas", {})
